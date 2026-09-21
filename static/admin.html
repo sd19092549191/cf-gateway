@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="zh-CN" data-page-node-id="FttzZeIjSGqbiMkcckEq5N">
+<head data-page-node-id="HwkMDUMh7gUABMTtT79wqJ">
+<meta charset="utf-8" data-page-node-id="kO9i85K98vDCoKZSEoyqmw">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="he0mDf5zKlDyZO4Mk6Y9iV">
+<title>CF API Gateway 管理后台</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--line:#e5e7eb;--txt:#1f2937;--muted:#6b7280;--pri:#2563eb;--ok:#16a34a;--warn:#d97706;--err:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,'Segoe UI','Microsoft YaHei',Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+a{color:var(--pri);text-decoration:none}
+/* 登录 */
+.login-wrap{display:flex;align-items:center;justify-content:center;height:100vh}
+.login-card{background:var(--card);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:40px 44px;width:360px}
+.login-card h1{font-size:20px;margin:0 0 6px;text-align:center}
+.login-card .sub{color:var(--muted);text-align:center;margin-bottom:24px;font-size:13px}
+/* 布局 */
+.layout{display:flex;min-height:100vh}
+.side{width:210px;background:#1e293b;color:#cbd5e1;flex-shrink:0;display:flex;flex-direction:column}
+.side .logo{padding:20px 18px;font-weight:700;font-size:16px;color:#fff;border-bottom:1px solid #334155}
+.side .logo small{display:block;font-weight:400;font-size:11px;color:#94a3b8;margin-top:4px}
+.side nav{flex:1;padding:10px 0}
+.side nav a{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#cbd5e1;font-size:14px}
+.side nav a:hover{background:#334155;color:#fff}
+.side nav a.on{background:var(--pri);color:#fff}
+.side .foot{padding:14px 18px;font-size:11px;color:#64748b;border-top:1px solid #334155}
+.main{flex:1;padding:24px 28px;min-width:0}
+.pagehead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.pagehead h2{margin:0;font-size:19px}
+/* 组件 */
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.stat .k{color:var(--muted);font-size:12px;margin-bottom:6px}
+.stat .v{font-size:22px;font-weight:700}
+.stat .v small{font-size:12px;color:var(--muted);font-weight:400}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;word-break:break-all}
+tr:hover td{background:#f8fafc}
+.btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;border-radius:6px;
+  padding:6px 12px;cursor:pointer;font-size:13px;color:var(--txt)}
+.btn:hover{border-color:var(--pri);color:var(--pri)}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.pri:hover{opacity:.9;color:#fff}
+.btn.mini{padding:3px 8px;font-size:12px}
+.btn.danger:hover{border-color:var(--err);color:var(--err)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;background:#fff;color:var(--txt)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar .gap{flex:1}
+.tag{display:inline-block;border-radius:5px;padding:2px 8px;font-size:12px;font-weight:600}
+.tag.active,.tag.completed,.tag.ok{background:#dcfce7;color:#15803d}
+.tag.queued,.tag.pending_auth{background:#dbeafe;color:#1d4ed8}
+.tag.processing,.tag.polling{background:#fef3c7;color:#b45309}
+.tag.failed,.tag.error,.tag.expired{background:#fee2e2;color:#b91c1c}
+.tag.disabled,.tag.cancelled{background:#e5e7eb;color:#4b5563}
+.tag.insufficient_balance{background:#ffedd5;color:#c2410c}
+.tag.rate_limited{background:#fce7f3;color:#be185d}
+.muted{color:var(--muted);font-size:12px}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+/* 弹窗 */
+.mask{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+.dlg{background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.2);width:520px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column}
+.dlg.wide{width:760px}
+.dlg .h{padding:16px 20px;border-bottom:1px solid var(--line);font-weight:600;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.dlg .b{padding:18px 20px;overflow:auto}
+.dlg .f{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+.form label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+.form label:first-child{margin-top:0}
+.form input,.form select,.form textarea{width:100%}
+.form .row{display:flex;gap:12px}.form .row>div{flex:1}
+.keybox{background:#0f172a;color:#4ade80;border-radius:8px;padding:12px 14px;font-family:ui-monospace,Consolas,monospace;
+  font-size:13px;word-break:break-all;margin:8px 0}
+/* toast */
+#toasts{position:fixed;top:18px;right:18px;z-index:99;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1e293b;color:#fff;border-radius:8px;padding:10px 16px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:380px}
+.toast.ok{background:var(--ok)}.toast.err{background:var(--err)}
+pre.json{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:12px;font-size:12px;overflow:auto;max-height:340px}
+.steps{margin:8px 0}.steps .st{display:flex;gap:8px;padding:5px 0;font-size:13px}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:13px;color:var(--muted)}
+.tip{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.7;margin-bottom:14px}
+</style>
+</head>
+<body data-page-node-id="XhdX0hRpo4bfoeDeBBrxjg">
+<div id="app" data-page-node-id="fUFfU8CBDDpEipsZNCt18N"></div>
+<div id="toasts" data-page-node-id="H8I7sCZ9rpD6xYhoZdl4eV"></div>
+
+<script>
+"use strict";
+const $app=document.getElementById('app');
+// 兼容子路径部署（如 https://host/cf/admin/）与根路径部署。
+// 关键：必须去掉结尾的斜杠并保证为空串（而非 '/'），否则 ROOT+path 拼出 '//admin/...'
+// 会被浏览器解析为协议相对地址，host 变成 'admin' → 登录报 Failed to fetch。
+let ROOT=(location.pathname.split('/admin')[0])||'';
+ROOT=ROOT.replace(/\/+$/,'');
+let TOKEN=localStorage.getItem('cfg_token')||'';
+let ME=null;
+
+function toast(msg,type){const t=document.createElement('div');t.className='toast '+(type||'');t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);setTimeout(()=>t.remove(),type==='err'?6000:3200);}
+
+async function api(method,path,body){
+  const opt={method,headers:{}};
+  if(TOKEN)opt.headers['Authorization']='Bearer '+TOKEN;
+  if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  const r=await fetch(ROOT+path,opt);
+  if(r.status===401&&location.hash!=='#/login'){location.hash='#/login';throw new Error('未登录');}
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.detail||data.error&&data.error.message||('请求失败 '+r.status));
+  return data;
+}
+const fmtT=ts=>ts?new Date(ts*1000).toLocaleString('zh-CN',{hour12:false}):'-';
+const fmtD=ts=>ts?Math.round((Date.now()/1000-ts)/60)+' 分钟前':'-';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- 弹窗 ---------- */
+function modal({title,body,footer,wide,onClose}){
+  const mask=document.createElement('div');mask.className='mask';
+  mask.innerHTML=`<div class="dlg${wide?' wide':''}"><div class="h"><span>${esc(title)}</span>
+    <button class="btn mini" data-x>✕</button></div><div class="b"></div>
+    ${footer!==false?'<div class="f"></div>':''}</div>`;
+  const b=mask.querySelector('.b'),f=mask.querySelector('.f');
+  if(typeof body==='string')b.innerHTML=body;else if(body)b.appendChild(body);
+  if(typeof footer==='string')f.innerHTML=footer;else if(footer)f.appendChild(footer);
+  const close=()=>{mask.remove();onClose&&onClose();};
+  mask.querySelector('[data-x]').onclick=close;
+  mask.onclick=e=>{if(e.target===mask)close();};
+  document.body.appendChild(mask);
+  return {close,body:b,foot:f,mask};
+}
+function confirmDlg(title,msg,danger){
+  return new Promise(res=>{
+    const foot=document.createElement('div');
+    const m=modal({title,body:`<p style="line-height:1.8">${msg}</p>`,footer:foot});
+    const no=document.createElement('button');no.className='btn';no.textContent='取消';
+    const yes=document.createElement('button');yes.className='btn '+(danger?'danger':'pri');yes.textContent='确定';
+    no.onclick=()=>{m.close();res(false);};yes.onclick=()=>{m.close();res(true);};
+    foot.append(no,yes);
+  });
+}
+
+/* ---------- 视图框架 ---------- */
+const NAV=[
+  ['overview','总览'],['accounts','账号管理'],['models','模型管理'],
+  ['keys','API 密钥'],['generations','生成任务'],['transactions','积分流水'],
+  ['logs','系统日志'],['settings','设置']];
+
+function render(){
+  const h=location.hash||'#/overview';
+  const page=h.replace('#/','').split('?')[0];
+  if(!TOKEN&&page!=='login'){location.hash='#/login';return;}
+  if(page==='login'){viewLogin();return;}
+  const found=NAV.some(([id])=>id===page);
+  renderShell(found?page:'overview');
+  ({overview:viewOverview,accounts:viewAccounts,models:viewModels,keys:viewKeys,
+    generations:viewGenerations,transactions:viewTransactions,logs:viewLogs,settings:viewSettings}
+    [found?page:'overview'])();
+}
+function renderShell(page){
+  $app.innerHTML=`<div class="layout">
+    <div class="side">
+      <div class="logo">CF API Gateway<small>Creative Fabrica 中转</small></div>
+      <nav>${NAV.map(([id,label])=>`<a href="#/${id}" class="${id===page?'on':''}">${label}</a>`).join('')}</nav>
+      <div class="foot">${esc(ME?ME.username:'')} · <a href="#" id="logout">退出</a><br><span class="mono">${esc(ME?ME.mcp_endpoint:'')}</span></div>
+    </div>
+    <div class="main" id="main"></div></div>`;
+  document.getElementById('logout').onclick=async e=>{e.preventDefault();
+    if(await confirmDlg('退出登录','确定要退出管理后台吗？',true)){localStorage.removeItem('cfg_token');TOKEN='';location.hash='#/login';}};
+}
+const main=()=>document.getElementById('main');
+const head=(title,extra='')=>`<div class="pagehead"><h2>${title}</h2><div style="display:flex;gap:8px">${extra}</div></div>`;
+
+/* ---------- 登录 ---------- */
+function viewLogin(){
+  $app.innerHTML=`<div class="login-wrap"><div class="login-card">
+    <h1>CF API Gateway</h1><div class="sub">Creative Fabrica MCP 中转站 · 管理后台</div>
+    <div class="form">
+      <label>用户名</label><input id="lu" autocomplete="username">
+      <label>密码</label><input id="lp" type="password" autocomplete="current-password">
+      <div style="margin-top:20px"><button class="btn pri" id="lb" style="width:100%;justify-content:center;padding:10px">登 录</button></div>
+    </div></div></div>`;
+  const doLogin=async()=>{
+    try{
+      const r=await api('POST','/admin/api/login',{username:document.getElementById('lu').value.trim(),
+        password:document.getElementById('lp').value});
+      TOKEN=r.token;localStorage.setItem('cfg_token',TOKEN);
+      ME=await api('GET','/admin/api/me');location.hash='#/overview';
+    }catch(e){toast(e.message,'err');}
+  };
+  document.getElementById('lb').onclick=doLogin;
+  document.getElementById('lp').onkeydown=e=>{if(e.key==='Enter')doLogin();};
+  document.getElementById('lu').focus();
+}
+
+/* ---------- 总览 ---------- */
+async function viewOverview(){
+  main().innerHTML=head('总览')+'<div class="empty">加载中…</div>';
+  const d=await api('GET','/admin/api/overview');
+  const card=(k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  main().innerHTML=head('总览')+`
+    <div class="grid">
+      ${card('可用账号 / 总数',`${d.accounts.active} <small>/ ${d.accounts.total}</small>`)}
+      ${card('已启用模型',d.models_enabled)}
+      ${card('启用中密钥',d.keys_active)}
+      ${card('今日请求',d.today.requests)}
+      ${card('今日成功',d.today.success)}
+      ${card('今日失败',d.today.failed)}
+      ${card('执行中 / 排队',`${d.today.running} <small>/ ${d.today.queued}</small>`)}
+      ${card('今日消耗积分',d.today.coins)}
+    </div>
+    <div class="card"><b style="font-size:13px">CapCut 成片存储</b>
+      <div style="margin-top:8px;font-size:13px">
+        ${d.r2&&d.r2.enabled
+          ? `<span class="tag ok">R2 已就绪</span> 桶 <span class="mono">${esc(d.r2.bucket)}</span>
+             公开域名 <span class="mono">${esc(d.r2.public_base)}</span>
+             <div class="muted" style="margin-top:6px">「官转」密钥出片将转存至此并返回 R2 链接；当前 ${d.r2.keys_using_r2} 个启用中密钥使用官转。</div>`
+          : `<span class="tag failed">R2 未配置</span> <span class="muted">${esc((d.r2&&d.r2.note)||'')}</span>`}
+      </div>
+    </div>
+    ${d.by_model.length?`<div class="card"><b style="font-size:13px">今日模型用量</b>
+      <table style="margin-top:8px"><tr><th>模型</th><th>状态</th><th>数量</th></tr>
+      ${d.by_model.map(x=>`<tr><td class="mono">${esc(x.model)}</td><td><span class="tag ${x.status}">${x.status}</span></td><td>${x.count}</td></tr>`).join('')}
+      </table></div>`:''}
+    <div class="card"><b style="font-size:13px">最近任务</b>
+      <table style="margin-top:8px"><tr><th>任务</th><th>模型</th><th>密钥</th><th>状态</th><th>创建时间</th></tr>
+      ${d.recent.map(g=>`<tr><td class="mono">${esc(g.id)}</td><td class="mono">${esc(g.model)}</td>
+        <td>${esc(g.key_name||'')}</td><td><span class="tag ${g.status}">${g.status}</span></td>
+        <td class="muted">${fmtT(g.created)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">暂无任务</td></tr>'}
+      </table></div>`;
+}
+
+/* ---------- 账号 ---------- */
+async function viewAccounts(){
+  main().innerHTML=head('账号管理','<button class="btn" id="bchk">⟳ 批量验活</button><button class="btn pri" id="add">+ 批量导入(Cookie)</button>')+'<div class="empty">加载中…</div>';
+  const d=await api('GET','/admin/api/accounts');
+  const statusZh={pending_auth:'待导入',active:'可用',disabled:'已禁用',expired:'Cookie已失效',insufficient_balance:'积分不足',rate_limited:'限流中',error:'异常'};
+  main().innerHTML=head('账号管理','<button class="btn" id="bchk">⟳ 批量验活</button><button class="btn pri" id="add">+ 批量导入(Cookie)</button>')+`
+    <div class="tip">在已登录 Creative Fabrica 的浏览器里用 Cookie 导出插件（如 EditThisCookie）导出 JSON。<b>支持批量</b>：一次选择多个导出文件，或粘贴多个账号（数组的数组）。导入时自动逐个验活（initialize + list_models），死号默认不保留，按 Cookie 身份自动命名并去重。<b>生成需要账号有 Studio AI 订阅且金币充足</b>（免费号/无订阅号会自动标记、不参与调度）。单个账号失效后在「编辑」里重新粘贴即可。</div>
+    <div class="card"><table>
+      <tr><th>名称</th><th>渠道</th><th>类型</th><th>状态</th><th>Studio AI 订阅</th><th>Cookie</th><th>余额(积分)</th><th>并发(执行中)</th><th>最近检查</th><th>错误</th><th>CapCut 签名 / 风控</th><th style="width:250px">操作</th></tr>
+      ${d.items.map(a=>{const sub=a.provider==='capcut'?'<span class="muted">—</span>':(sub==null?'<span class="muted">未知</span>':
+        (sub.includes('active')?`<span class="tag active" title="${esc(sub)}">${esc(sub.split(':')[0])} 生效</span>`:
+        `<span class="tag failed" title="${esc(sub)}">未生效</span>`));return `<tr>
+        <td><b>${esc(a.name)}</b></td>
+        <td>${a.provider==='capcut'?'<span class="tag active">CapCut</span>':'<span class="tag">CF</span>'}</td>
+        <td class="muted">${a.auth_type==='oauth'?'OAuth':'Cookie'}</td>
+        <td><span class="tag ${a.status}">${statusZh[a.status]||a.status}</span></td>
+        <td>${sub}</td>
+        <td>${a.cookie_updated?'<span class="tag active">已导入</span>':'<span class="muted">未导入</span>'}</td>
+        <td>${a.coin_balance!=null?a.coin_balance:'<span class="muted">未知</span>'}</td>
+        <td>${a.max_concurrency} <span class="muted">(${a.running})</span></td>
+        <td class="muted">${fmtT(a.last_check_at)}</td>
+        <td class="muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.last_error)}">${esc(a.last_error||'')}</td>
+        <td>${a.provider!=='capcut'?'<span class="muted">—</span>':(()=>{
+          const ch=a.cookie_health||{};
+          const saved=(a.signs_saved||[]).length, ov=(a.signs_overridden||[]).length;
+          const signTag=ov?`<span class="tag active" title="已存账号专属签名：${esc((a.signs_saved||[]).join(', '))}">专属 ${ov}</span>`
+            :(saved?`<span class="tag" title="已存签名">已存 ${saved}</span>`:'<span class="tag" title="运行时按算法现签">现签</span>');
+          const riskTag=!a.cookie_updated?'<span class="muted">未导入</span>'
+            :(ch.can_submit_likely?'<span class="tag active" title="关键 Cookie 齐全">可提交</span>'
+              :`<span class="tag failed" title="${esc(ch.hint||'')}">缺 ${esc((ch.missing||[]).join(','))}</span>`);
+          return signTag+' '+riskTag;})()}</td>
+        <td>
+          ${a.auth_type==='oauth'?`<button class="btn mini pri" data-oa="${a.id}">授权</button>`:''}
+          <button class="btn mini" data-test="${a.id}">测试</button>
+          <button class="btn mini" data-edit="${a.id}">编辑</button>
+          <button class="btn mini danger" data-del="${a.id}">删除</button>
+        </td></tr>`}).join('')||'<tr><td colspan="12" class="empty">暂无账号，点击右上角批量导入</td></tr>'}
+    </table></div>`;
+  document.getElementById('bchk').onclick=async()=>{
+    const b=document.getElementById('bchk');b.disabled=true;b.textContent='验活中…';
+    try{
+      const r=await api('POST','/admin/api/accounts/batch-check',{deep:true});
+      modal({title:`批量验活结果：${r.alive}/${r.total} 可用`,wide:true,body:`<table>
+        <tr><th>账号</th><th>结果</th><th>订阅</th><th>模型数</th><th>状态</th><th>详情</th></tr>
+        ${r.items.map(x=>`<tr><td><b>${esc(x.name)}</b></td>
+          <td>${x.ok?'<span class="tag active">✓ 可用</span>':'<span class="tag failed">✕ 不可调度</span>'}</td>
+          <td>${x.subscription==null?'<span class="muted">未知</span>':(String(x.subscription).includes('active')?`<span class="tag active">${esc(x.subscription)}</span>`:`<span class="tag failed">${esc(x.subscription)}</span>`)}</td>
+          <td>${x.models??'-'}</td>
+          <td><span class="tag ${x.status||''}">${statusZh[x.status]||x.status||'-'}</span></td>
+          <td class="muted">${esc(x.detail||'')}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">暂无账号</td></tr>'}
+        </table>
+        <p class="muted" style="margin-top:10px">验活含真实生成验证（最低价模型）；生成失败按官方规则退款，只有账号真正可用才产生费用。</p>`});
+      viewAccounts();
+    }catch(e){toast(e.message,'err');b.disabled=false;b.textContent='⟳ 批量验活';}
+  };
+  document.getElementById('add').onclick=()=>{
+    const foot=document.createElement('div');
+    const m=modal({title:'批量导入账号（Cookie + 验活）',wide:true,body:`<div class="form">
+      <label>账号渠道</label>
+      <select id="apr" style="width:100%">
+        <option value="creative-fabrica">Creative Fabrica（MCP 通道）</option>
+        <option value="capcut">CapCut（直连通道，视频生成）</option>
+      </select>
+      <label>方式一：选择一个或多个 Cookie 导出文件（.json，支持插件数组 / 脚本导出外壳）</label>
+      <input type="file" id="af" multiple accept=".json,application/json" style="width:100%">
+      <label>方式二：粘贴（单个账号导出 JSON；多个账号：数组套一层 <span class="mono">[[{...},{...}],[{...}]]</span>，或 <b>一行一个</b>——每行一个头字符串 / 导出 JSON / 脚本外壳，<span class="mono">#</span> 开头为注释行）</label>
+      <textarea id="ac" rows="6" placeholder='CapCut 支持三种写法：① 插件导出的数组 [{"name":"sessionid","value":"...","domain":".capcut.com"}, ...]；② 脚本导出外壳 {"account":"a@b.com","cookies":{"sessionid":"..."},"playwright_cookies":[...],"cookie_header":"sessionid=...; ..."}（元数据会自动忽略）；③ 头字符串 sessionid=...; uid_tt=...。CF: [{"name":"cf_sso_loggedin","value":"1","domain":".creativefabrica.com"}, ...]'></textarea>
+      <div class="row"><div><label>账号名称（可选；批量导入自动用文件名 / Cookie 登录名）</label><input id="an" placeholder="留空自动识别"></div>
+      <div><label>选项</label>
+        <label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="adp" checked style="width:auto"> 深度验活：真实生成一次验证计费链路</label>
+        <label style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" id="ak" checked style="width:auto"> 验活失败的账号不保留</label></div></div>
+      <p class="muted" id="apnote">深度验活用<b>最低价标准定价模型</b>真实生成（当前约 40 币/账号）；生成失败按官方规则退款——即账号不可用（无订阅/支付失败/余额不足）时验活<b>零费用</b>，只有账号真正可用才消耗该费用。Cookie 加密存储；重复账号（同 cfauth_uid/登录名）自动跳过。</p></div>`,footer:foot});
+    m.body.querySelector('#apr').onchange=e=>{
+      const cap=e.target.value==='capcut';
+      const dp=m.body.querySelector('#adp');dp.checked=!cap;dp.disabled=cap;
+      m.body.querySelector('#apnote').innerHTML=cap
+        ?'CapCut 渠道：验活=<b>查询积分余额</b>（零费用），积分自动写入账号余额；余额不足或 Cookie 失效的账号自动标记、不参与调度。Cookie 可从已登录 <b>www.capcut.com</b> 的浏览器/脚本导出——插件数组、脚本外壳（<span class="mono">cookies</span>/<span class="mono">playwright_cookies</span>/<span class="mono">cookie_header</span>）或头字符串都认，<b>必须含 sessionid</b>；<b>渠道请务必选 CapCut</b>，否则会按 Creative Fabrica 规则解析而失败。'
+        :'深度验活用<b>最低价标准定价模型</b>真实生成（当前约 40 币/账号）；生成失败按官方规则退款——即账号不可用（无订阅/支付失败/余额不足）时验活<b>零费用</b>，只有账号真正可用才消耗该费用。Cookie 加密存储；重复账号（同 cfauth_uid/登录名）自动跳过。';
+    };
+    const no=document.createElement('button');no.className='btn';no.textContent='取消';
+    const yes=document.createElement('button');yes.className='btn pri';yes.textContent='导入并验活';
+    no.onclick=m.close;
+    yes.onclick=async()=>{
+      try{
+        const accounts=[];
+        const files=[...(m.body.querySelector('#af').files||[])];
+        for(const f of files){
+          const text=await f.text();
+          accounts.push({name:f.name.replace(/\.json$/i,''),cookie:text.trim()});
+        }
+        const pasted=m.body.querySelector('#ac').value.trim();
+        if(pasted){
+          let parsed=null;
+          try{parsed=JSON.parse(pasted);}catch(e){parsed=null;}
+          if(Array.isArray(parsed)&&parsed.length&&Array.isArray(parsed[0])){
+            for(const arr of parsed) accounts.push({cookie:JSON.stringify(arr)});
+          }else if(parsed!==null){
+            accounts.push({name:m.body.querySelector('#an').value.trim(),cookie:pasted});
+          }else{
+            // 多行模式：一行一个（头字符串 / 导出 JSON / 脚本外壳），空行与 # 开头注释跳过
+            const lines=pasted.split(/\r?\n/).map(s=>s.trim()).filter(s=>s&&!s.startsWith('#'));
+            if(lines.length>1){
+              for(const ln of lines) accounts.push({cookie:ln});
+            }else{
+              accounts.push({name:m.body.querySelector('#an').value.trim(),cookie:pasted});
+            }
+          }
+        }
+        if(!accounts.length)return toast('请选择文件或粘贴 Cookie','err');
+        yes.disabled=true;yes.textContent=`导入中（${accounts.length} 个）…`;
+        const r=await api('POST','/admin/api/accounts/batch-import',
+          {accounts,provider:m.body.querySelector('#apr').value,
+           keep_dead:!m.body.querySelector('#ak').checked,probe:true,
+           deep:m.body.querySelector('#adp').checked&&!m.body.querySelector('#adp').disabled});
+        m.close();
+        const s=r.summary;
+        modal({title:`批量导入完成：成功 ${s.alive_created}/${s.total}`,wide:true,body:`
+          <p class="muted">共 ${s.total} 个 · 验活通过 ${s.alive_created} · 失效剔除 ${s.dead} · 重复跳过 ${s.skipped} · 格式错误 ${s.invalid}</p>
+          <table><tr><th>账号</th><th>结果</th><th>详情</th></tr>
+          ${r.created.map(x=>`<tr><td><b>${esc(x.name)}</b></td>
+            <td>${x.ok?'<span class="tag active">✓ 已导入</span>':'<span class="tag error">已导入(异常)</span>'}</td>
+            <td class="muted">${esc(x.detail)}</td></tr>`).join('')}
+          ${r.dead.map(x=>`<tr><td>${esc(x.name)}</td><td><span class="tag failed">✕ 已剔除</span></td>
+            <td class="muted">${esc(x.reason)}</td></tr>`).join('')}
+          ${r.skipped.map(x=>`<tr><td>${esc(x.name)}</td><td><span class="tag disabled">跳过</span></td>
+            <td class="muted">${esc(x.reason)}</td></tr>`).join('')}
+          ${r.invalid.map(x=>`<tr><td>${esc(x.name)}</td><td><span class="tag failed">格式错误</span></td>
+            <td class="muted">${esc(x.reason)}</td></tr>`).join('')}
+          </table>`});
+        viewAccounts();
+      }catch(e){toast(e.message,'err');yes.disabled=false;yes.textContent='导入并验活';}
+    };
+    foot.append(no,yes);
+  };
+  main().querySelectorAll('[data-test]').forEach(b=>b.onclick=async()=>{
+    b.disabled=true;b.textContent='测试中…';
+    try{
+      const r=await api('POST',`/admin/api/accounts/${b.dataset.test}/test?deep=true`);
+      modal({title:'账号链路测试（含真实生成验证）',body:`<div class="steps">${
+        r.steps.map(s=>`<div class="st">${s.ok?'<span style="color:var(--ok)">✓</span>':'<span style="color:var(--err)">✕</span>'}
+          <div><b>${esc(s.name)}</b> <span class="muted">${esc(s.detail)}</span></div></div>`).join('')}
+        ${r.models&&r.models.length?`<div class="st"><span>📦</span><div>${r.models.slice(0,20).map(esc).join('、')}${r.models.length>20?` …等 ${r.models.length} 个`:''}</div></div>`:''}</div>
+        <p class="muted">真实生成使用最低价标准模型；生成失败按官方规则退款，账号可用才产生费用。</p>`});
+      viewAccounts();
+    }catch(e){toast(e.message,'err');b.disabled=false;b.textContent='测试';}
+  });
+  main().querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
+    const a=d.items.find(x=>x.id==b.dataset.edit);
+    const isCapcut=a.provider==='capcut';
+    const signHtml=isCapcut?`<hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
+      <label>CapCut 风控体检（Cookie 关键项）</label>
+      <div id="cwh" class="muted">读取中…</div>
+      <label style="margin-top:10px">CapCut 签名（sign / device-time）</label>
+      <p class="muted" style="margin:2px 0 6px">算法已逆向：<span class="mono">md5("9e2c|路径末7字符|pf|appvr|device-time|tdid|11ac")</span>。输入里不含任何账号密钥，所以<b>默认按当前时间现签即可，无需抓包</b>；只有需要与该账号浏览器完全一致的场合才在这里存值。</p>
+      <div id="sgn" class="muted">读取中…</div>
+      <label style="margin-top:8px">从文本提取（粘贴 request header 或 HAR 片段，可整段 HAR）</label>
+      <textarea id="shar" rows="3" placeholder="sign: 63fce733xxxxxxxxxxxxxxxxxxxxxx&#10;device-time: 1789453186"></textarea>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+        <button class="btn mini" id="sext" type="button">提取并保存</button>
+        <button class="btn mini" id="smint" type="button">按算法现签</button>
+        <button class="btn mini" id="spatch" type="button">补单个 Cookie</button>
+        <button class="btn mini danger" id="sclear" type="button">清空账号签名</button>
+      </div>`:'';
+    const foot=document.createElement('div');
+    const m=modal({title:'编辑账号：'+esc(a.name),body:`<div class="form">
+      <label>名称</label><input id="en" value="${esc(a.name)}">
+      <label>状态</label><select id="es"><option value="active" ${a.status==='active'?'selected':''}>可用</option>
+        <option value="disabled" ${a.status==='disabled'?'selected':''}>禁用</option></select>
+      <div class="row"><div><label>最大并发</label><input id="ec" type="number" min="1" max="10" value="${a.max_concurrency}"></div>
+      <div><label>积分余额（0=未知，手动维护）</label><input id="eb" type="number" step="1" value="${a.coin_balance??0}"></div></div>
+      <label>更新 Cookie（可选，失效时粘贴新的导出 JSON）</label>
+      <textarea id="eck" rows="4" placeholder='留空表示不更新'></textarea>
+      ${signHtml}
+      </div>`,footer:foot});
+    const no=document.createElement('button');no.className='btn';no.textContent='取消';
+    const yes=document.createElement('button');yes.className='btn pri';yes.textContent='保存';
+    no.onclick=m.close;
+    yes.onclick=async()=>{try{
+      const ck=m.body.querySelector('#eck').value.trim();
+      const payload={name:m.body.querySelector('#en').value.trim(),
+        status:m.body.querySelector('#es').value,max_concurrency:+m.body.querySelector('#ec').value,
+        coin_balance:+m.body.querySelector('#eb').value};
+      if(ck)payload.cookie=ck;
+      await api('PATCH',`/admin/api/accounts/${a.id}`,payload);
+      m.close();toast('已保存');viewAccounts();}catch(e){toast(e.message,'err');}};
+    foot.append(no,yes);
+
+    if(isCapcut){
+      const rowsHtml=r=>'<table style="width:100%"><tr><th>接口</th><th>当前来源</th><th>device-time</th><th>本地可复算</th></tr>'+
+        r.rows.map(x=>'<tr><td class="mono">'+esc(x.key)+'</td><td>'+
+          (x.source==='account'?'<span class="tag active">账号专属</span>':(x.source==='mint'?'<span class="tag">现签</span>':'<span class="muted">内置兜底</span>'))+
+          '</td><td class="mono muted">'+esc(x.device_time||'-')+(x.age_hours!=null?' ('+x.age_hours+'h 前)':'')+'</td><td>'+
+          (x.algorithm_verified?'✅':'<span class="tag failed">✗ 与算法不符</span>')+'</td></tr>').join('')+'</table>';
+      const healthHtml=h=>'<p style="margin:2px 0">'+(h.can_submit_likely?'<span class="tag active">关键项齐全</span>':'<span class="tag failed">缺 '+esc((h.missing||[]).join(', '))+'</span>')+
+        '　<span class="muted">'+esc(String(h.hint||'').replace(/^缺少[^：]*：/,''))+'</span></p><p class="muted" style="margin:0">'+
+        h.rows.map(r=>'<span class="mono" title="'+esc(r.why)+'">'+(r.present?'✅':'❌')+esc(r.name)+'</span>').join(' ')+'</p>';
+      const load=async()=>{
+        try{
+          const [s,ch]=await Promise.all([api('GET','/admin/api/accounts/'+a.id+'/signs'),
+                                          api('GET','/admin/api/accounts/'+a.id+'/cookie-health')]);
+          const e1=m.body.querySelector('#sgn'); if(e1)e1.innerHTML=rowsHtml(s);
+          const e2=m.body.querySelector('#cwh'); if(e2)e2.innerHTML=healthHtml(ch);
+        }catch(e){const e1=m.body.querySelector('#sgn'); if(e1)e1.textContent='读取失败：'+e.message;}
+      };
+      const wrap=fn=>async()=>{try{await fn();await load();viewAccounts();}catch(e){toast(e.message,'err');}};
+      m.body.querySelector('#sext').onclick=wrap(async()=>{
+        const t=m.body.querySelector('#shar').value.trim();
+        if(!t)throw new Error('先粘贴 request header 或 HAR 片段');
+        const r=await api('POST','/admin/api/accounts/'+a.id+'/signs/extract',{text:t,save:true,default_key:'new'});
+        const bad=Object.keys(r.algorithm_verified||{}).filter(k=>!r.algorithm_verified[k]);
+        toast('已保存 '+r.found.length+' 个接口的签名'+(bad.length?'（其中 '+bad.length+' 个与算法不符，已照存）':''));
+        m.body.querySelector('#shar').value='';
+      });
+      m.body.querySelector('#smint').onclick=wrap(async()=>{
+        const r=await api('POST','/admin/api/accounts/'+a.id+'/signs/mint',{});
+        toast('已按算法现签 '+Object.keys(r.signs).length+' 个接口（未保存：运行时本来就是现签）');
+      });
+      m.body.querySelector('#sclear').onclick=wrap(async()=>{
+        if(!await confirmDlg('清空账号签名','该账号将回到「按算法现签」。确定？'))return;
+        await api('DELETE','/admin/api/accounts/'+a.id+'/signs');toast('已清空');
+      });
+      m.body.querySelector('#spatch').onclick=()=>{
+        const f2=document.createElement('div');
+        const m2=modal({title:'补单个 Cookie',body:'<div class="form"><label>name=value（如 d_ticket=xxxx，从该账号浏览器里复制）</label><input id="pv" placeholder="d_ticket=..."></div>',footer:f2});
+        const n2=document.createElement('button');n2.className='btn';n2.textContent='取消';n2.onclick=m2.close;
+        const y2=document.createElement('button');y2.className='btn pri';y2.textContent='补入';
+        y2.onclick=async()=>{
+          const v=(m2.body.querySelector('#pv').value||'').trim();const i=v.indexOf('=');
+          if(i<1)return toast('格式应为 name=value','err');
+          try{
+            await api('PATCH','/admin/api/accounts/'+a.id,{cookie_patch:{[v.slice(0,i).trim()]:v.slice(i+1).trim()}});
+            m2.close();toast('已补入 Cookie');await load();viewAccounts();
+          }catch(e){toast(e.message,'err');}
+        };
+        f2.append(n2,y2);
+      };
+      load();
+    }
+  });
+  main().querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    const a=d.items.find(x=>x.id==b.dataset.del);
+    if(await confirmDlg('删除账号',`确定删除账号 <b>${esc(a.name)}</b>？该账号的 Cookie 绑定将被移除。`,true)){
+      try{await api('DELETE',`/admin/api/accounts/${a.id}`);toast('已删除');viewAccounts();}catch(e){toast(e.message,'err');}
+    }
+  });
+  main().querySelectorAll('[data-oa]').forEach(b=>b.onclick=async()=>{
+    b.disabled=true;try{
+      const r=await api('POST',`/admin/api/accounts/${b.dataset.oa}/oauth/start`);
+      const m2=modal({title:'OAuth 授权（备用方式）',body:`
+        <p>点击下方链接，在 Creative Fabrica 登录并授权：</p>
+        <p><a href="${esc(r.authorize_url)}" target="_blank" style="word-break:break-all">${esc(r.authorize_url)}</a></p>
+        <p class="muted">授权完成后浏览器会自动跳回本系统并提示成功。</p>`,
+        footer:'<button class="btn pri" data-ok>我已完成授权</button>'});
+      m2.foot.querySelector('[data-ok]').onclick=()=>{m2.close();viewAccounts();};
+    }catch(e){toast(e.message,'err');b.disabled=false;}
+  });
+}
+
+/* ---------- 模型 ---------- */
+async function viewModels(){
+  main().innerHTML=head('模型管理','<button class="btn" id="sync">⟳ 同步模型目录</button><button class="btn pri" id="add">+ 手动添加</button>')+'<div class="empty">加载中…</div>';
+  const d=await api('GET','/admin/api/models');
+  const priceText=p=>{
+    if(!p)return '<span class="muted">-</span>';
+    if(p.type==='standard'&&p.coinAmount)return p.coinAmount+' 币';
+    if(p.type==='dynamic')return '<span class="muted">动态</span>';
+    return '<span class="muted">-</span>';};
+  // 生成上限展示：优先用服务端算好的生效值（含来源），否则前端兜底推算
+  const glText=m=>{
+    if(m.gen_limits_text)return esc(m.gen_limits_text).replace(/（(.+?)）$/,'<br><span class="muted">（$1）</span>');
+    const g=m.gen_limits_effective||m.gen_limits||{};
+    const rs=(g.resolutions||[]).map(r=>r+'p').join('/');
+    const ds=(g.durations&&g.durations.length)?g.durations.join('/'):`${g.min_duration||2}-${g.max_duration||15}`;
+    if(!rs&&!ds)return '<span class="muted">默认 15s / 480,720p</span>';
+    return `时长 ${ds}s｜分辨率 ${rs}`;
+  };
+  // 编辑框取值：只回填**后台已保存**的值（空=未覆写，走内置覆写/默认）
+  const glVal=(m,k)=>{
+    const g=(m&&m.gen_limits)||{};
+    const v=g[k];
+    if(v==null||v===''||(Array.isArray(v)&&!v.length))return '';
+    return Array.isArray(v)?v.join(','):v;
+  };
+  main().innerHTML=head('模型管理','<button class="btn" id="sync">⟳ 同步模型目录</button><button class="btn pri" id="add">+ 手动添加</button>')+`
+    <div class="tip">「同步模型目录」按账号渠道拉真实目录：Creative Fabrica 走 <b>list_models</b>；CapCut 走官方 <b>/storyboard/v1/agent/list_models</b>（含时长/分辨率/画幅/参考素材上限）。新模型默认停用，启用后即可被 API 调用。<b>参考上限</b>标「实测」的是按真实能力覆写过的（如 Seedance 2.5 为 30/10/10）；<b>生成上限</b>是网关**按模型放开**的分辨率/时长（默认 480/720p、2-15s，Seedance 2.5 放开到 1080p 与 30s），都可在编辑里逐模型改；清空编辑框即回到内置覆写/默认。</div>
+    <div class="card"><table>
+      <tr><th>模型 ID</th><th>名称</th><th>类型</th><th>参考上限<br><span class="muted">图/视频/音频</span></th><th>生成上限<br><span class="muted">时长 / 分辨率</span></th><th>模式(modality)</th><th>价格</th><th>启用</th><th>预估成本</th><th>超时(秒)</th><th>来源</th><th style="width:150px">操作</th></tr>
+      ${d.items.map(m=>`<tr>
+        <td class="mono"><b>${esc(m.model_id)}</b></td>
+        <td>${esc(m.display_name||'')}</td>
+        <td>${m.type}</td>
+        <td class="mono">${m.ref_limits&&m.ref_limits.image!=null?`${m.ref_limits.image}/${m.ref_limits.video}/${m.ref_limits.audio}`:'<span class="muted">默认 9/3/3</span>'}${m.ref_limits&&m.ref_limits._from==='override'?' <span class="tag active">实测</span>':''}</td>
+        <td class="mono" style="max-width:210px">${glText(m)}</td>
+        <td class="muted" style="max-width:190px">${(m.modalities||[]).join(', ')||'-'}</td>
+        <td>${priceText(m.pricing)}</td>
+        <td><span class="tag ${m.enabled?'active':'disabled'}">${m.enabled?'启用':'停用'}</span>
+          <button class="btn mini" data-toggle="${m.id}" data-on="${m.enabled?0:1}">${m.enabled?'停用':'启用'}</button></td>
+        <td>${m.estimated_cost||'-'}</td>
+        <td>${m.timeout_seconds}</td>
+        <td class="muted">${m.auto_registered?'目录同步':'手动'}</td>
+        <td><button class="btn mini" data-edit="${m.id}">编辑</button>
+            <button class="btn mini danger" data-del="${m.id}">删除</button></td>
+      </tr>`).join('')||'<tr><td colspan="12" class="empty">暂无模型。先在「账号管理」导入 Cookie，再点「同步模型目录」。</td></tr>'}
+    </table></div>`;
+  document.getElementById('sync').onclick=async()=>{
+    const b=document.getElementById('sync');b.disabled=true;b.textContent='同步中…';
+    try{const r=await api('POST','/admin/api/models/sync');
+      toast(`同步完成：目录 ${r.models} 个模型，新增 ${r.imported}，更新 ${r.updated}`);
+      viewModels();
+    }catch(e){toast(e.message,'err');b.disabled=false;b.textContent='⟳ 同步模型目录';}
+  };
+  main().querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{
+    try{await api('PATCH',`/admin/api/models/${b.dataset.toggle}`,{enabled:b.dataset.on==='1'});viewModels();}catch(e){toast(e.message,'err');}
+  });
+  const editForm=(m)=>{
+    const isNew=!m;
+    const foot=document.createElement('div');
+    const body=`<div class="form">
+      <div class="row"><div><label>模型 ID（对外名称，须与目录一致，如 flux_1_schnell）</label><input id="mm" value="${esc(m?m.model_id:'')}" ${isNew?'':'disabled'}></div>
+      <div><label>显示名称</label><input id="mn" value="${esc(m?m.display_name:'')}"></div></div>
+      <div class="row"><div><label>类型</label><select id="my"><option value="video" ${m&&m.type==='video'?'selected':''}>video</option>
+        <option value="image" ${m&&m.type==='image'?'selected':''}>image</option>
+        <option value="audio" ${m&&m.type==='audio'?'selected':''}>audio</option>
+        <option value="other" ${!m||m.type==='other'?'selected':''}>other</option></select></div></div>
+      <div class="row"><div><label>预估成本（积分，余额检查用，0=不检查）</label><input id="mc" type="number" step="1" value="${m?m.estimated_cost:0}"></div>
+      <div><label>超时秒数（提交+轮询总时限）</label><input id="mo" type="number" value="${m?m.timeout_seconds:900}"></div></div>
+      <label>参考素材上限（留空=按官方目录/默认 9/3/3；总数自动为三者之和）</label>
+      <div class="row"><div><label>参考图</label><input id="rl_image" type="number" min="0" value="${m&&m.ref_limits&&m.ref_limits.image!=null?m.ref_limits.image:''}"></div>
+      <div><label>参考视频</label><input id="rl_video" type="number" min="0" value="${m&&m.ref_limits&&m.ref_limits.video!=null?m.ref_limits.video:''}"></div>
+      <div><label>参考音频</label><input id="rl_audio" type="number" min="0" value="${m&&m.ref_limits&&m.ref_limits.audio!=null?m.ref_limits.audio:''}"></div></div>
+      ${m&&m.ref_limits&&m.ref_limits._from?`<p class="muted" style="margin:0 0 6px">当前来源：${{override:'实测覆写',catalog:'官方目录',default:'内置默认'}[m.ref_limits._from]||m.ref_limits._from}${m.ref_limits.total?`，总数 ${m.ref_limits.total}`:''}</p>`:''}
+      <label>生成能力上限（分辨率/时长按模型放开；<b>两项都留空</b>=用内置覆写/默认）</label>
+      <div class="row"><div><label>分辨率档（逗号分隔）</label><input id="gl_res" placeholder="480,720,1080" value="${glVal(m,'resolutions')}"></div>
+      <div><label>时长档（逗号分隔，可留空）</label><input id="gl_dur" placeholder="5,8,10,12,15,18,20,25,30" value="${glVal(m,'durations')}"></div></div>
+      <div class="row"><div><label>最短秒数</label><input id="gl_min" type="number" step="1" min="1" value="${glVal(m,'min_duration')}"></div>
+      <div><label>最长秒数</label><input id="gl_max" type="number" step="1" min="1" value="${glVal(m,'max_duration')}"></div>
+      <div style="display:flex;align-items:flex-end;gap:6px"><button class="btn mini" id="gl_cat" type="button">按官方目录填入</button></div></div>
+      <p class="muted" style="margin:0 0 6px">当前生效：${esc(m&&m.gen_limits_text?m.gen_limits_text:'时长 2-15s｜分辨率 480/720p（内置默认）')}${m&&m.catalog_caps&&(m.catalog_caps.durations&&m.catalog_caps.durations.length||m.catalog_caps.resolutions&&m.catalog_caps.resolutions.length)?`<br>官方目录声明：时长 ${(m.catalog_caps.durations||[]).join('/')}s｜分辨率 ${(m.catalog_caps.resolutions||[]).join('/')}`:''}</p>
+      <label>固定参数 JSON（可选，会作为默认值并入 generate 调用，如 {"modality":"textToVideo","duration_seconds":5,"resolution":"1080p"}）</label>
+      <input id="mp" value='${m&&Object.keys(m.param_template||{}).length?esc(JSON.stringify(m.param_template)):''}'>
+      ${m&&(m.pricing||m.modalities&&m.modalities.length)?`<label>目录信息（自动同步）</label>
+      <pre class="json">${esc(JSON.stringify({modalities:m.modalities,pricing:m.pricing,maxPromptLength:m.max_prompt_length},null,2))}</pre>`:''}
+    </div>`;
+    const mm2=modal({title:isNew?'添加模型':'编辑模型 '+esc(m.model_id),body,footer:foot,wide:true});
+    const gq=sel=>mm2.body.querySelector(sel);
+    // 打开弹窗时的初始值（用于判断用户是否真的改过，避免把内置默认固化成手工覆写）
+    const glInit=[glVal(m,'resolutions'),glVal(m,'durations'),
+                  glVal(m,'min_duration'),glVal(m,'max_duration')].map(v=>String(v));
+    const glCat=gq('#gl_cat');
+    if(glCat)glCat.onclick=()=>{const c=(m&&m.catalog_caps)||{};
+      const rs=(c.resolutions||[]).map(x=>String(x).replace(/[pP]$/,'')).filter(x=>/^\d+$/.test(x));
+      if(rs.length)gq('#gl_res').value=rs.join(',');
+      if(c.durations&&c.durations.length){
+        gq('#gl_dur').value=c.durations.join(',');
+        gq('#gl_max').value=Math.max(...c.durations.map(Number));
+      }
+      toast('已按官方目录填入，保存后生效');};
+    const no=document.createElement('button');no.className='btn';no.textContent='取消';
+    const yes=document.createElement('button');yes.className='btn pri';yes.textContent='保存';
+    no.onclick=mm2.close;
+    yes.onclick=async()=>{try{
+      let pt={};const pv=mm2.body.querySelector('#mp').value.trim();
+      if(pv){pt=JSON.parse(pv);}
+      const payload={display_name:mm2.body.querySelector('#mn').value.trim()||undefined,
+        mtype:mm2.body.querySelector('#my').value,
+        estimated_cost:+mm2.body.querySelector('#mc').value||0,timeout_seconds:+mm2.body.querySelector('#mo').value||900,
+        param_template:pt};
+      // 参考素材上限：仅在用户改动时才提交，避免把「目录/实测」来源改成手工快照
+      const orig=m&&m.ref_limits?m.ref_limits:{};
+      const rl={};
+      [['image','#rl_image'],['video','#rl_video'],['audio','#rl_audio']].forEach(([k,sel])=>{
+        const v=mm2.body.querySelector(sel).value.trim(); if(v!=='')rl[k]=+v;});
+      if(['image','video','audio'].some(k=>String(orig[k]??'')!==String(rl[k]??'')))
+        payload.ref_limits=rl;
+      // 生成能力上限：仅在改动时提交；分辨率+时长都清空 = 清空覆写（回内置覆写/默认）
+      const gnum=v=>String(v||'').split(/[,，\s]+/).map(x=>x.trim().replace(/[pP]$/,''))
+        .filter(x=>x!=='').map(Number).filter(x=>x>0);
+      const gnow=[gq('#gl_res').value.trim(),gq('#gl_dur').value.trim(),
+                  gq('#gl_min').value.trim(),gq('#gl_max').value.trim()];
+      if(gnow.some((v,i)=>v!==glInit[i])){
+        const gr=gnum(gnow[0]),gd=gnum(gnow[1]);
+        payload.gen_limits=(!gr.length&&!gd.length)?{}
+          :{resolutions:gr,durations:gd,
+            min_duration:gnow[2]?+gnow[2]:undefined,max_duration:gnow[3]?+gnow[3]:undefined};
+      }
+      if(isNew)await api('POST','/admin/api/models',{model_id:mm2.body.querySelector('#mm').value.trim(),
+        mcp_tool:'generate',...payload});
+      else await api('PATCH',`/admin/api/models/${m.id}`,payload);
+      mm2.close();toast('已保存');viewModels();
+    }catch(e){toast(e.message,'err');}};
+    foot.append(no,yes);
+  };
+  document.getElementById('add').onclick=()=>editForm(null);
+  main().querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
+    editForm(d.items.find(x=>x.id==b.dataset.edit));});
+  main().querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    const m=d.items.find(x=>x.id==b.dataset.del);
+    if(await confirmDlg('删除模型',`确定删除模型 <b>${esc(m.model_id)}</b>？`,true)){
+      try{await api('DELETE',`/admin/api/models/${m.id}`);toast('已删除');viewModels();}catch(e){toast(e.message,'err');}
+    }
+  });
+}
+
+/* ---------- 密钥 ---------- */
+async function viewKeys(){
+  main().innerHTML=head('API 密钥','<button class="btn pri" id="add">+ 创建密钥</button>')+'<div class="empty">加载中…</div>';
+  const d=await api('GET','/admin/api/keys');
+  const models=await api('GET','/admin/api/models');
+  let r2on=true; try{r2on=!!(await api('GET','/admin/api/overview')).r2.enabled;}catch(e){}
+  main().innerHTML=head('API 密钥','<button class="btn pri" id="add">+ 创建密钥</button>')+`
+    <div class="tip">客户端（含 New API 渠道）使用 <b>Authorization: Bearer sk-cf-xxxx</b> 调用本网关。完整密钥仅在创建时显示一次，服务端只保存哈希。</div>
+    <div class="card"><table>
+      <tr><th>名称</th><th>密钥前缀</th><th>CapCut链接</th><th>今日用量/限额</th><th>累计</th><th>模型限制</th><th>状态</th><th>最近使用</th><th style="width:200px">操作</th></tr>
+      ${d.items.map(k=>`<tr>
+        <td><b>${esc(k.name)}</b>${k.note?`<div class="muted">${esc(k.note)}</div>`:''}</td>
+        <td class="mono">${esc(k.key_prefix)}…</td>
+        <td>${(k.capcut_link_mode||'official')==='r2'
+          ?(r2on?'<span class="tag active">官转→R2</span>':'<span class="tag failed">官转(R2未配置→回退官链)</span>')
+          :'<span class="tag">官链</span>'}</td>
+        <td>${k.today_used} <span class="muted">/ ${k.daily_limit||'∞'}</span></td>
+        <td>${k.total_used}</td>
+        <td class="muted">${k.enabled_models.length?esc(k.enabled_models.join(', ')):'全部'}</td>
+        <td><span class="tag ${k.enabled?'active':'disabled'}">${k.enabled?'启用':'停用'}</span>
+          <button class="btn mini" data-tg="${k.id}" data-on="${k.enabled?0:1}">${k.enabled?'停用':'启用'}</button></td>
+        <td class="muted">${fmtT(k.last_used_at)}</td>
+        <td><button class="btn mini" data-edit="${k.id}">编辑</button>
+            <button class="btn mini danger" data-del="${k.id}">删除</button></td>
+      </tr>`).join('')||'<tr><td colspan="9" class="empty">暂无密钥</td></tr>'}
+    </table></div>`;
+  const keyForm=(k)=>{
+    const foot=document.createElement('div');
+    const m=modal({title:k?'编辑密钥':'创建 API 密钥',body:`<div class="form">
+      <label>名称</label><input id="kn" value="${esc(k?k.name:'')}" placeholder="New API 渠道">
+      <div class="row"><div><label>每日请求限额（0=不限）</label><input id="kl" type="number" min="0" value="${k?k.daily_limit:0}"></div></div>
+      <label>CapCut 渠道成片链接方式</label>
+      <div style="display:flex;gap:18px;margin:6px 0 4px">
+        <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="klm" value="official" style="width:auto" ${(!k||(k.capcut_link_mode||'official')==='official')?'checked':''}> CapCut 官链（返回 CapCut 原始下载链接，不改动）</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="klm" value="r2" style="width:auto" ${k&&k.capcut_link_mode==='r2'?'checked':''}> CapCut 官转（转存 R2 桶，返回 R2 链接）</label>
+      </div>
+      <p class="muted" style="margin:0 0 4px">官链：直接用 CapCut CDN 链接（含签名，有时效）；官转：成片转存到 R2 桶后返回稳定链接。仅对 CapCut 渠道模型生效。当前 R2：${r2on?'<b style="color:#15803d">已就绪</b>':'<b style="color:#b91c1c">未配置，官转会回退官链</b>'}</p>
+      <label>允许的模型（留空=全部；逗号分隔）</label><input id="km" value="${esc(k?k.enabled_models.join(','):'')}" placeholder="cf-xxx, cf-yyy" list="mlist">
+      <label>备注</label><input id="kb" value="${esc(k?k.note:'')}"></div>`,footer:foot});
+    const no=document.createElement('button');no.className='btn';no.textContent='取消';
+    const yes=document.createElement('button');yes.className='btn pri';yes.textContent=k?'保存':'创建';
+    no.onclick=m.close;
+    yes.onclick=async()=>{try{
+      const models2=m.body.querySelector('#km').value.split(',').map(s=>s.trim()).filter(Boolean);
+      const payload={name:m.body.querySelector('#kn').value.trim(),daily_limit:+m.body.querySelector('#kl').value||0,
+        enabled_models:models2,capcut_link_mode:(m.body.querySelector('input[name=klm]:checked')||{}).value||'official',
+        note:m.body.querySelector('#kb').value};
+      const r=await api(k?'PATCH':'POST',k?`/admin/api/keys/${k.id}`:'/admin/api/keys',payload);
+      m.close();
+      if(!k&&r.key){showKeyOnce(r.key);}
+      toast('已保存');viewKeys();
+    }catch(e){toast(e.message,'err');}};
+    foot.append(no,yes);
+  };
+  const showKeyOnce=(key)=>{
+    const m=modal({title:'密钥已创建',body:`
+      <p>请立即复制保存，<b>完整密钥仅显示这一次</b>：</p>
+      <div class="keybox">${esc(key)}</div>`,footer:''});
+    const f=m.mask.querySelector('.f');
+    const cp=document.createElement('button');cp.className='btn pri';cp.textContent='复制';
+    cp.onclick=async()=>{try{await navigator.clipboard.writeText(key);toast('已复制','ok');}catch(e){toast('请手动复制','err');}};
+    const ok=document.createElement('button');ok.className='btn';ok.textContent='关闭';ok.onclick=m.close;
+    f.append(cp,ok);
+  };
+  document.getElementById('add').onclick=()=>keyForm(null);
+  main().querySelectorAll('[data-tg]').forEach(b=>b.onclick=async()=>{
+    try{await api('PATCH',`/admin/api/keys/${b.dataset.tg}`,{enabled:b.dataset.on==='1'});viewKeys();}catch(e){toast(e.message,'err');}});
+  main().querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>keyForm(d.items.find(x=>x.id==b.dataset.edit)));
+  main().querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    const k=d.items.find(x=>x.id==b.dataset.del);
+    if(await confirmDlg('删除密钥',`确定删除密钥 <b>${esc(k.name)}</b>（${esc(k.key_prefix)}…）？使用该密钥的调用将立即失效。`,true)){
+      try{await api('DELETE',`/admin/api/keys/${k.id}`);toast('已删除');viewKeys();}catch(e){toast(e.message,'err');}
+    }});
+  const dl=document.createElement('datalist');dl.id='mlist';
+  dl.innerHTML=models.items.map(m=>`<option value="${esc(m.model_id)}">`).join('');
+  $app.appendChild(dl);
+}
+
+/* ---------- 任务 ---------- */
+let genFilter={status:'',model:'',gen_id:'',page:1};
+async function viewGenerations(){
+  main().innerHTML=head('生成任务')+'<div class="empty">加载中…</div>';
+  const q=new URLSearchParams();
+  ['status','model','gen_id'].forEach(k=>{if(genFilter[k])q.set(k,genFilter[k]);});
+  q.set('page',genFilter.page);q.set('size','20');
+  const d=await api('GET','/admin/api/generations?'+q.toString());
+  main().innerHTML=head('生成任务')+`
+    <div class="toolbar">
+      <select id="fs"><option value="">全部状态</option>${['queued','processing','polling','completed','failed','cancelled'].map(s=>
+        `<option ${genFilter.status===s?'selected':''}>${s}</option>`).join('')}</select>
+      <input id="fm" placeholder="按模型过滤" value="${esc(genFilter.model)}" style="width:170px">
+      <input id="fg" placeholder="任务 ID" value="${esc(genFilter.gen_id)}" style="width:220px" class="mono">
+      <button class="btn" id="fgo">查询</button><div class="gap"></div>
+      <span class="muted">共 ${d.total} 条</span>
+    </div>
+    <div class="card"><table>
+      <tr><th>任务 ID</th><th>模型</th><th>密钥</th><th>账号</th><th>状态</th><th>结果</th><th>耗时</th><th>创建</th><th style="width:150px">操作</th></tr>
+      ${d.items.map(g=>`<tr>
+        <td class="mono">${esc(g.id)}</td>
+        <td class="mono">${esc(g.model)}</td>
+        <td>${esc(g.key_name||'-')}</td>
+        <td>${esc(g.account||'-')}</td>
+        <td><span class="tag ${g.status}">${g.status}</span>${g.retry_count?`<span class="muted"> ×${g.retry_count}</span>`:''}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${g.url?`<a href="${esc(g.url)}" target="_blank">链接</a>`:(g.error?`<span class="muted" title="${esc(g.error)}">${esc(g.error.slice(0,40))}</span>`:'-')}</td>
+        <td class="muted">${g.duration_ms?(g.duration_ms/1000).toFixed(1)+'s':'-'}</td>
+        <td class="muted">${fmtT(g.created)}</td>
+        <td><button class="btn mini" data-dt="${g.id}">详情</button>
+          ${g.status==='queued'?`<button class="btn mini danger" data-cc="${g.id}">取消</button>`:''}
+          ${['failed','cancelled'].includes(g.status)?`<button class="btn mini" data-rt="${g.id}">重试</button>`:''}</td>
+      </tr>`).join('')||'<tr><td colspan="9" class="empty">暂无任务</td></tr>'}
+    </table>
+    <div class="pager">
+      <button class="btn mini" id="pv" ${genFilter.page<=1?'disabled':''}>上一页</button>
+      <span>第 ${genFilter.page} 页</span>
+      <button class="btn mini" id="nx" ${genFilter.page*20>=d.total?'disabled':''}>下一页</button>
+    </div></div>`;
+  const refresh=()=>{genFilter.status=document.getElementById('fs').value;
+    genFilter.model=document.getElementById('fm').value.trim();
+    genFilter.gen_id=document.getElementById('fg').value.trim();genFilter.page=1;viewGenerations();};
+  document.getElementById('fgo').onclick=refresh;
+  document.getElementById('fs').onchange=refresh;
+  document.getElementById('pv').onclick=()=>{genFilter.page--;viewGenerations();};
+  document.getElementById('nx').onclick=()=>{genFilter.page++;viewGenerations();};
+  main().querySelectorAll('[data-dt]').forEach(b=>b.onclick=async()=>{
+    const g=await api('GET','/admin/api/generations/'+b.dataset.dt);
+    modal({title:'任务详情 '+esc(g.id),wide:true,body:`
+      <table><tr><th style="width:110px">状态</th><td><span class="tag ${g.status}">${g.status}</span>
+        ${g.cf_status?`<span class="muted"> CF侧: ${esc(g.cf_status)}</span>`:''}</td></tr>
+      <tr><th>模型</th><td class="mono">${esc(g.model)}</td></tr>
+      <tr><th>账号 / 密钥</th><td>${esc(g.account||'-')} / ${esc(g.key_name||'-')}</td></tr>
+      ${g.cf_generation_id?`<tr><th>CF 生成ID</th><td class="mono">${esc(g.cf_generation_id)}</td></tr>`:''}
+      <tr><th>Prompt</th><td>${esc(g.prompt)}</td></tr>
+      <tr><th>参数</th><td><pre class="json">${esc(JSON.stringify(g.params,null,2))}</pre></td></tr>
+      <tr><th>结果 URL</th><td>${g.url?`<a href="${esc(g.url)}" target="_blank">${esc(g.url)}</a>`:'-'}</td></tr>
+      <tr><th>耗时</th><td>${g.duration_ms?(g.duration_ms/1000).toFixed(1)+'s':'-'}</td></tr>
+      ${g.error?`<tr><th>错误</th><td style="color:var(--err)">${esc(g.error)}</td></tr>`:''}</table>
+      ${g.result?`<label style="display:block;font-size:13px;color:var(--muted);margin:12px 0 5px">上游原始结果</label>
+        <pre class="json">${esc(JSON.stringify(g.result,null,2))}</pre>`:''}`});
+  });
+  main().querySelectorAll('[data-cc]').forEach(b=>b.onclick=async()=>{
+    if(await confirmDlg('取消任务',`确定取消任务 <b class="mono">${esc(b.dataset.cc)}</b>？`,true)){
+      try{await api('POST',`/admin/api/generations/${b.dataset.cc}/cancel`);toast('已取消');viewGenerations();}catch(e){toast(e.message,'err');}}});
+  main().querySelectorAll('[data-rt]').forEach(b=>b.onclick=async()=>{
+    try{await api('POST',`/admin/api/generations/${b.dataset.rt}/retry`);toast('已重新排队');viewGenerations();}catch(e){toast(e.message,'err');}});
+}
+
+/* ---------- 流水 / 日志 ---------- */
+let txPage=1,logFilter={level:'',page:1};
+async function viewTransactions(){
+  main().innerHTML=head('积分流水')+'<div class="empty">加载中…</div>';
+  const d=await api('GET',`/admin/api/transactions?page=${txPage}&size=20`);
+  main().innerHTML=head('积分流水')+`<div class="card"><table>
+    <tr><th>时间</th><th>账号</th><th>关联任务</th><th>类型</th><th>变动前</th><th>消耗</th><th>变动后</th><th>备注</th></tr>
+    ${d.items.map(t=>`<tr><td class="muted">${fmtT(t.created_at)}</td><td>${esc(t.account_name)}</td>
+      <td class="mono">${t.generation_id?`<a href="#" onclick="return false">${esc(t.generation_id)}</a>`:'-'}</td>
+      <td><span class="tag ${t.kind==='auto'?'active':'disabled'}">${t.kind}</span></td>
+      <td>${t.before_balance}</td><td>${t.cost}</td><td>${t.after_balance}</td><td class="muted">${esc(t.note)}</td></tr>`).join('')
+      ||'<tr><td colspan="8" class="empty">暂无流水</td></tr>'}</table>
+    <div class="pager"><button class="btn mini" id="pv" ${txPage<=1?'disabled':''}>上一页</button>
+    <span>第 ${txPage} 页</span><button class="btn mini" id="nx" ${txPage*20>=d.total?'disabled':''}>下一页</button></div></div>`;
+  document.getElementById('pv').onclick=()=>{txPage--;viewTransactions();};
+  document.getElementById('nx').onclick=()=>{txPage++;viewTransactions();};
+}
+async function viewLogs(){
+  main().innerHTML=head('系统日志')+'<div class="empty">加载中…</div>';
+  const q=new URLSearchParams({page:logFilter.page,size:'50'});
+  if(logFilter.level)q.set('level',logFilter.level);
+  const d=await api('GET','/admin/api/logs?'+q.toString());
+  main().innerHTML=head('系统日志')+`<div class="toolbar">
+      <select id="ll"><option value="">全部级别</option>${['info','warn','error'].map(l=>
+        `<option ${logFilter.level===l?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="card"><table>
+    <tr><th>时间</th><th>级别</th><th>事件</th><th>关联</th><th>详情</th></tr>
+    ${d.items.map(l=>`<tr><td class="muted" style="white-space:nowrap">${fmtT(l.created_at)}</td>
+      <td><span class="tag ${l.level==='error'?'error':l.level==='warn'?'processing':'active'}">${l.level}</span></td>
+      <td class="mono">${esc(l.event)}</td>
+      <td class="muted">${esc((l.account_id?'账号#'+l.account_id+' ':'')+(l.key_prefix?l.key_prefix:'')+(l.request_id?' '+l.request_id:''))}</td>
+      <td class="mono" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(JSON.stringify(l.detail))}">${esc(JSON.stringify(l.detail))}</td></tr>`).join('')
+    ||'<tr><td colspan="5" class="empty">暂无日志</td></tr>'}</table>
+    <div class="pager"><button class="btn mini" id="pv" ${logFilter.page<=1?'disabled':''}>上一页</button>
+    <span>第 ${logFilter.page} 页</span><button class="btn mini" id="nx" ${logFilter.page*50>=d.total?'disabled':''}>下一页</button></div></div>`;
+  document.getElementById('ll').onchange=e=>{logFilter.level=e.target.value;logFilter.page=1;viewLogs();};
+  document.getElementById('pv').onclick=()=>{logFilter.page--;viewLogs();};
+  document.getElementById('nx').onclick=()=>{logFilter.page++;viewLogs();};
+}
+
+/* ---------- 设置 ---------- */
+async function viewSettings(){
+  main().innerHTML=head('设置')+'<div class="empty">加载中…</div>';
+  const s=await api('GET','/admin/api/settings');
+  const d=ME||await api('GET','/admin/api/me');
+  main().innerHTML=head('设置')+`<div class="card" style="max-width:560px">
+    <table>
+      <tr><th style="width:170px">对外地址</th><td class="mono">${esc(d.base_url)}</td></tr>
+      <tr><th>MCP 端点</th><td class="mono">${esc(d.mcp_endpoint)}</td></tr>
+      <tr><th>OAuth 授权服务器</th><td class="mono">https://oauth.creativefabrica.com（自动发现）</td></tr>
+    </table></div>
+    <div class="card" style="max-width:560px"><b style="font-size:13px">任务执行参数</b>
+      <div class="form">
+        <label>默认任务超时（秒，可在模型级覆盖）</label><input id="st" type="number" value="${s.default_timeout}">
+        <label>失败自动重试次数</label><input id="sr" type="number" value="${s.max_retries}">
+        <div style="margin-top:16px"><button class="btn pri" id="ss">保存</button></div>
+      </div>
+      <p class="muted" style="margin-top:14px">${esc(s.notes||'')}</p></div>`;
+  document.getElementById('ss').onclick=async()=>{
+    try{await api('PUT','/admin/api/settings',{default_timeout:+document.getElementById('st').value,
+      max_retries:+document.getElementById('sr').value});toast('已保存','ok');}catch(e){toast(e.message,'err');}};
+}
+
+window.addEventListener('hashchange',render);
+(async()=>{
+  if(TOKEN){try{ME=await api('GET','/admin/api/me');}catch(e){TOKEN='';localStorage.removeItem('cfg_token');}}
+  render();
+})();
+</script>
+</body>
+</html>

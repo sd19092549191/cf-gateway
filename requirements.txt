@@ -1,0 +1,13 @@
+# CF NewAPI Gateway 运行依赖
+# Python 3.11+（镜像使用 3.12）
+
+fastapi==0.141.1
+uvicorn==0.52.4
+pydantic==2.13.5
+SQLAlchemy==2.0.53
+httpx==0.28.1
+boto3==1.43.94
+requests==2.34.2
+PyJWT==2.14.0
+python-multipart==0.0.32
+cryptography==44.0.1

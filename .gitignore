@@ -1,0 +1,23 @@
+# 敏感/运行时数据（严禁入库）
+.env
+relay_data/
+data/
+_test_state.json
+*.db
+*.db-wal
+*.db-journal
+
+# 测试产物与大文件
+*.mp4
+*.png
+*.log
+_e2e_body*.json
+_r2_test_result.json
+_e2e_*.py
+_smoke_v1.sh
+
+# 系统垃圾
+.DS_Store
+__pycache__/
+*.pyc
+app/cf_client.py.bak

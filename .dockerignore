@@ -1,0 +1,34 @@
+# 只把运行需要的文件放进镜像，其余全部忽略
+.git
+.gitignore
+.venv
+venv
+env
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 配置与数据（绝不入镜像）
+.env
+data/
+dist/
+*.db
+*.db-shm
+*.db-wal
+.secret_key
+
+# 文档与本地脚本
+DEPLOY.md
+install.sh
+*.md
+*.log
+
+# 测试/调试残留
+_test_state.json
+_r2_test_result.json
+*.mp4
+*.png
+*.jpg
+*.har
+tmp/

@@ -1,0 +1,27 @@
+services:
+  cf-gateway:
+    build: .
+    # ⚠️ 不要写 image: —— 1Panel 创建编排会先执行 docker compose pull，
+    # 本地镜像名必然 pull 失败（pull access denied）。build 即可自动打标签。
+    container_name: capcut
+    restart: unless-stopped
+    # .env 同时用于 compose 变量替换和容器环境变量注入
+    env_file:
+      - .env
+    ports:
+      # 宿主机端口可通过 .env 的 GATEWAY_HOST_PORT 调整
+      - "${GATEWAY_HOST_PORT:-8000}:${GATEWAY_PORT:-8000}"
+    volumes:
+      # 数据库、会话密钥、上传临时文件都在这里，删容器不丢数据
+      - ./data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,os,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('GATEWAY_PORT','8000')+'/health', timeout=4).status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
