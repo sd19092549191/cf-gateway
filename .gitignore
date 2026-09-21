@@ -29,3 +29,6 @@ _submit_out*.log
 __pycache__/
 *.pyc
 app/cf_client.py.bak
+
+# 热更脚本产生的备份
+.hot-update-backup/

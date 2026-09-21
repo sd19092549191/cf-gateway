@@ -654,13 +654,54 @@ tar czf cf-gateway-backup-$(date +%F).tar.gz data/
 docker compose start
 ```
 
-### 升级
+### 只更新代码（推荐：不停机、不动数据）
+
+代码是**打进镜像**的（`Dockerfile: COPY app ./app`），所以「只更新」= 把仓库最新源码覆盖进容器再重启，
+不需要重建镜像、不碰数据卷、不碰编排：
 
 ```bash
-# 1) 备份 data/
-# 2) 用新版本的 app/ static/ Dockerfile requirements.txt 覆盖
-# 3) 重建
-docker compose up -d --build
+# 服务器上一条命令（拉最新代码 → 语法自检 → 备份 → 覆盖 → 重启 → 自检）
+curl -fsSL https://raw.githubusercontent.com/sd19092549191/cf-gateway/main/hot-update.sh | sudo bash
+```
+
+带参数（`... | sudo bash -s -- <参数>`）：
+
+| 参数 | 作用 |
+|---|---|
+| `--container capcut2` | 指定容器名（默认 `capcut2`；不存在时自动识别含 capcut/gateway 的容器） |
+| `--branch main` | 拉指定分支 |
+| `--only app/db.py,app/routers/openai.py` | 只更新列出的文件（默认同步整个 `app/` 与 `static/`） |
+| `--dry-run` | 只下载 + 语法自检 + 打印将要执行的动作，**不碰容器**（上线前预演用） |
+| `--rollback` | 用上一次备份回滚代码并重启 |
+| `--no-restart` | 只复制不重启（⚠️ 不重启**不生效**，仅配合手工操作） |
+
+| | |
+|---|---|
+| **会动** | `/app/app`、`/app/static`（容器内代码），备份落在执行目录 `./.hot-update-backup/app-<时间戳>/` |
+| **不会动** | `data/` 数据卷（账号 Cookie、密钥、任务记录、积分流水）、`.env`、docker 编排、New API 配置、宿主机的源码目录 |
+
+**三条前提**（脚本会自动检查前两条）：
+
+1. 只热更**代码**。若 `requirements.txt` 有变化，脚本会警告 —— 这时热更不够，需按下面的「完整重建」。
+2. `docker cp` 之后**必须 `docker restart`**，否则 uvicorn 不会重新加载（历史踩坑，脚本已内置）。
+3. 覆盖前会自动备份容器内 `app/`，出问题用 `--rollback` 一键回退。
+
+自检：
+
+```bash
+curl -s http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:8000/v1/models -H "Authorization: Bearer <网关Key>" | head -c 400
+docker logs --tail 60 capcut2
+```
+
+### 完整重建（改了依赖 / Dockerfile / 编排时）
+
+```bash
+cd /path/to/cf-gateway            # install.sh 自举下载的源码目录
+# 拉最新源码覆盖（公开仓库）
+curl -fsSL https://codeload.github.com/sd19092549191/cf-gateway/tar.gz/refs/heads/main \
+  | tar xz --strip-components=1 -C .
+docker compose up -d --build       # 1Panel 用户：在编排页点「重建」
 ```
 
 数据库结构变更由网关启动时自动迁移（`ALTER TABLE ADD COLUMN`），老库可直接沿用。
