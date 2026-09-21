@@ -25,15 +25,12 @@ if [[ ! -f "$DIR/docker-compose.yml" ]]; then
   printf '\033[1;36m[自举]\033[0m 下载源码包 %s ...\n' "$RELEASE_TAG"
   command -v curl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq curl unzip; }
   command -v unzip >/dev/null 2>&1 || apt-get install -y -qq unzip
-  ZIP_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
-  ASSET_URL="$(curl -fsSL -H "Authorization: token ${GH_TOKEN}" "$ZIP_URL" \
-    | grep -o '"browser_download_url": *"[^"]*cf-gateway[^"]*\.zip"' | head -1 \
-    | sed 's/.*"\(https[^"]*\)"/\1/')"
-  [[ -n "$ASSET_URL" ]] || { echo '[x] 未找到 Release 资产，请检查 $REPO / $RELEASE_TAG' >&2; exit 1; }
-  curl -fSL -H "Authorization: token ${GH_TOKEN}" -o /tmp/cf-gateway.zip "$ASSET_URL"
+  curl -fsSL -H "Authorization: token ${GH_TOKEN}" \
+       -o /tmp/cf-gateway.zip "https://api.github.com/repos/${REPO}/zipball/${RELEASE_TAG}"
   rm -rf "$DIR/cf-gateway" && mkdir -p "$DIR/cf-gateway"
   unzip -q /tmp/cf-gateway.zip -d "$DIR/cf-gateway"
-  DIR="$(echo "$DIR"/cf-gateway/cf-gateway-*/)"
+  DIR="$(echo "$DIR"/cf-gateway/sd19092549191-cf-gateway-*/)"
+  [[ -f "$DIR/docker-compose.yml" ]] || DIR="$(echo "$DIR"/cf-gateway-*/)"
   cd "$DIR"
   printf '\033[1;36m[自举]\033[0m 源码就绪: %s\n' "$DIR"
 fi
