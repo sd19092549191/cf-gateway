@@ -2,6 +2,15 @@
 
 > 前提：服务器已装 1Panel（含 Docker）。全程只需要浏览器 + 面板文件管理器，不用 SSH 也行。
 
+## 0. 最快路径：一条命令（有 SSH 时）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sd19092549191/cf-gateway/main/install.sh | sudo bash
+```
+
+会自动下载源码包 → 装 Docker（缺才装）→ 生成随机管理密码的 .env → 构建启动 → 健康检查。
+只需要 1Panel 编排（不带自动安装）的话：下载 zip 解压到 `/opt/1panel/docker/compose/cf-gateway/` 后按下面 5 步走。
+
 ## 第 1 步：上传并解压（顺序铁律：先传文件，再建编排）
 
 1. 面板 → 主机 → 文件 → 进入 `/opt/1panel/docker/compose/`
