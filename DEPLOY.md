@@ -19,6 +19,7 @@
 - [10. 运维](#10-运维)
 - [11. API 参考](#11-api-参考)
 - [12. 常见问题](#12-常见问题)
+- [13. 品牌脱敏（模型名一律 sd-*）](#13-品牌脱敏对外模型名一律-sd--2026-09-21)
 
 ---
 
@@ -244,8 +245,8 @@ docker compose up -d --build
 | 渠道名称 | `CF-Gateway` |
 | Base URL / 代理地址 | `http://<网关IP>:8000` |
 | 密钥 | `sk-cf-xxxxxxxx` |
-| 模型 | 填网关的 `model_id`，多个用英文逗号分隔，例如：<br>`capcut-seedance-2.0-mini,capcut-seedance-2.0` |
-| 模型映射（可选） | 若想对用户暴露 `sora-2` 这类名字：<br>`sora-2` → `capcut-seedance-2.0-mini` |
+| 模型 | 填网关的 `model_id`，多个用英文逗号分隔，例如：<br>`sd-seedance-2.0-mini,sd-seedance-2.0` |
+| 模型映射（可选） | 若想对用户暴露 `sora-2` 这类名字：<br>`sora-2` → `sd-seedance-2.0-mini` |
 
 创建任务示例（等价于 New API 会发的请求）：
 
@@ -254,7 +255,7 @@ curl -X POST "http://<网关>:8000/v1/videos" \
   -H "Authorization: Bearer sk-cf-xxxxxxxx" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "capcut-seedance-2.0-mini",
+    "model": "sd-seedance-2.0-mini",
     "prompt": "一只橘猫在雨后霓虹街道上奔跑，电影感",
     "seconds": "4",
     "size": "480p 16:9"
@@ -267,7 +268,7 @@ curl -X POST "http://<网关>:8000/v1/videos" \
 {
   "id": "gen_bd0a27622e230e21",
   "object": "video",
-  "model": "capcut-seedance-2.0-mini",
+  "model": "sd-seedance-2.0-mini",
   "status": "queued",
   "created_at": 1789464666,
   "seconds": "4",
@@ -319,7 +320,7 @@ curl -X POST "http://<网关>:8000/v1/chat/completions" \
   -H "Authorization: Bearer sk-cf-xxxxxxxx" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "capcut-seedance-2.0-mini",
+    "model": "sd-seedance-2.0-mini",
     "messages": [{"role": "user", "content": "一只橘猫在雨后霓虹街道上奔跑"}],
     "extra_body": {"seconds": "4", "size": "480p 16:9"}
   }'
@@ -357,9 +358,9 @@ curl -X POST "http://<网关>:8000/v1/images/generations" \
 > 超限会在**提交前**返回 400（如 `参考image最多 30 个（当前 31）`），不会排队后才失败。
 >
 > **开箱即用**：**Seedance 2.5 随首次启动自动出现在模型列表**（内置种子，`/v1/models` 立即可见，
-> 对外 id 为 `capcut-seedance_2.5`，**注意是下划线**，与 2.0 系的连字符不同）。
+> 对外 id 为 `sd-seedance-2.5`，**注意是下划线**，与 2.0 系的连字符不同）。
 > 无需先加账号跑「目录同步」——上限由内置实测覆写解析，不依赖官方接口返回值。
-> 此外 `capcut-seedance-2.0-mini` / `capcut-seedance-2.0` / `capcut-seedance-1.0-fast` 也会一并播种。
+> 此外 `sd-seedance-2.0-mini` / `sd-seedance-2.0` / `sd-seedance-1.0-fast` 也会一并播种。
 >
 > **为什么 2.5 能到 30/10/10**：参考素材走的是 CapCut 的 `omni_reference`（内部叫 `r2v`，即
 > `material_gen_video_by_seedance25_r2v_*`）生成模式 —— 只有「开启参考素材」这条路径才放开大数量，
@@ -379,14 +380,14 @@ curl -X POST "http://<网关>:8000/v1/images/generations" \
 > | 2 | 内置实测覆写 | 目前只有 **Seedance 2.5**：`480p/720p/1080p` + `5/8/10/12/15/18/20/25/30` 秒 |
 > | 3 | 内置默认 | 其余 CapCut 视频模型：`480p/720p` + 2–15 秒（连续取值，无档位） |
 >
-> 例：`capcut-seedance-2.0` 请求 `1080p` / `30s` 会被夹取成 `720p` / `15s`（并在日志里 WARNING 留痕）；
-> `capcut-seedance_2.5` 同样是 `1080p` / `30s` 则原样生效。**只有 2.5 放开了 30s 与 1080p，其余模型维持原行为。**
+> 例：`sd-seedance-2.0` 请求 `1080p` / `30s` 会被夹取成 `720p` / `15s`（并在日志里 WARNING 留痕）；
+> `sd-seedance-2.5` 同样是 `1080p` / `30s` 则原样生效。**只有 2.5 放开了 30s 与 1080p，其余模型维持原行为。**
 > 时长若模型给了档位表（如 2.5），请求值会**吸附到最近档位**（如 6s → 5s，7s → 8s）。
 >
 > 调用方可以在 `GET /v1/models` 里读到每个 CapCut 模型实际生效的上限，无需试错：
 >
 > ```json
-> {"id":"capcut-seedance_2.5","object":"model","owned_by":"capcut",
+> {"id":"sd-seedance-2.5","object":"model","owned_by":"sd",
 >  "capcut_limits":{"resolutions":["480p","720p","1080p"],
 >                   "durations":[5,8,10,12,15,18,20,25,30],
 >                   "min_duration":2,"max_duration":30,
@@ -419,7 +420,7 @@ curl -s $GW/health
 curl -s $GW/v1/models -H "Authorization: Bearer $KEY"
 curl -s -X POST $GW/v1/videos -H "Authorization: Bearer $KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"capcut-seedance-2.0-mini","prompt":"测试","seconds":"4","size":"480p 16:9"}'
+  -d '{"model":"sd-seedance-2.0-mini","prompt":"测试","seconds":"4","size":"480p 16:9"}'
 ```
 
 ---
@@ -753,3 +754,47 @@ docker compose up -d --build
 **Q：CapCut 账号 Cookie 多久失效？**
 没有固定周期，通常几天到两周。建议多备几个账号轮换（账号页支持设置并发），
 失效时批量替换 Cookie 即可，历史任务记录不受影响。
+
+**Q：客户轮询用哪个模型名？**
+用 **`sd-poll`**（0 价）。**绝不能用收费模型名轮询** —— New API 会把响应里那几十个
+token 当成「秒」再收一次费（实测 ≈¥40/次）。见 `NEWAPI_BILLING.md` 第 4 节。
+
+## 13. 品牌脱敏：对外模型名一律 `sd-*`（2026-09-21）
+
+**要求**：客户端可见的一切模型名不得出现上游品牌。改动覆盖三块：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| 网关模型目录 | `capcut-seedance-2.0` / `capcut-seedance_2.5` | `sd-seedance-2.0` / `sd-seedance-2.5` |
+| `/v1/models` 的 `owned_by` | `capcut` | `sd` |
+| `/v1/models` 的能力字段 | `capcut_limits` | `sd_limits` |
+| New API 轮询模型 | `capcut-poll` | `sd-poll` |
+| New API 渠道「模型映射」 | `sd-seedance-2.0-720p → capcut-seedance-2.0` | **清空**（由网关别名解析强制分辨率） |
+
+**老库升级**：启动时自动改名（`db._migrate_rebrand_model_ids`，幂等），覆盖
+`models.model_id`、`generations.model_id`、`api_keys.enabled_models_text`（Key 白名单）。
+⚠️ 白名单那处漏改会让该 Key「一个模型都没有」。
+
+**不停机热更（已部署实例）**：
+
+```bash
+set -e
+REPO=sd19092549191/cf-gateway
+for f in app/db.py app/capcut_channel.py app/routers/openai.py; do
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/main/$f" -o "/tmp/$(basename $f)"
+  docker cp "/tmp/$(basename $f)" capcut2:/app/$f
+done
+docker restart capcut2      # ⚠️ docker cp 后必须 restart 才生效
+sleep 8
+docker exec capcut2 python -c "import sqlite3;print([r[0] for r in sqlite3.connect('/app/relay_data/cf_gateway.db').execute('select model_id from models')])"
+```
+
+**自检（零成本）**：
+
+```bash
+curl -s http://127.0.0.1:8000/v1/models -H "Authorization: Bearer <你的网关Key>" \
+  | grep -i capcut && echo "❌ 还有残留" || echo "✅ 已脱敏"
+```
+
+`relay/_check_model_names.py [base_url]` 会一次跑完（遍历 `_test_state.json` 里所有 Key，
+连 `owned_by` / 字段名一起查）。

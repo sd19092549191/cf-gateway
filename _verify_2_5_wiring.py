@@ -33,7 +33,7 @@ init_db()
 
 from app.main import seed_capcut_models  # noqa: E402
 
-MID = "capcut-seedance_2.5"
+MID = "sd-seedance-2.5"
 failures: list[str] = []
 
 
@@ -51,8 +51,10 @@ rows = db.query(ModelEntry).order_by(ModelEntry.model_id).all()
 ids = [m.model_id for m in rows]
 print("   播种结果:", ids)
 check("2.5 出现在首启播种列表", MID in ids)
-check("原 3 个种子未被破坏", {"capcut-seedance-2.0-mini", "capcut-seedance-2.0",
-                              "capcut-seedance-1.0-fast"} <= set(ids))
+check("原 3 个种子未被破坏", {"sd-seedance-2.0-mini", "sd-seedance-2.0",
+                              "sd-seedance-1.0-fast"} <= set(ids))
+check("对外模型名不含上游品牌（全部 sd- 前缀）",
+      all(i.startswith("sd-") for i in ids), f"实得 {ids}")
 
 print("\n2) 未经官方目录同步时，2.5 的上限解析")
 m = db.query(ModelEntry).filter(ModelEntry.model_id == MID).first()
@@ -99,9 +101,9 @@ check("来源标记为 manual", rl3.get("_from") == "manual", f"实得 {rl3.get(
 
 print("\n5) 无覆写模型的模型不受影响（仍走默认 9/3/3）")
 other = db.query(ModelEntry).filter(
-    ModelEntry.model_id == "capcut-seedance-2.0").first()
+    ModelEntry.model_id == "sd-seedance-2.0").first()
 if other is None:  # 理论上首启已播种，兜底建一个
-    other = ModelEntry(model_id="capcut-seedance-2.0", display_name="Seedance 2.0",
+    other = ModelEntry(model_id="sd-seedance-2.0", display_name="Seedance 2.0",
                        provider="capcut", mcp_tool="seedance_2.0", mtype="video",
                        enabled=True)
     db.add(other)
@@ -118,6 +120,23 @@ import app.service as sv  # noqa: E402
 check("service 里有 _REF_LIMIT_OVERRIDES", hasattr(sv, "_REF_LIMIT_OVERRIDES"))
 check("capcut_channel 里已无同名表（避免漂移）", not hasattr(cc, "_REF_LIMIT_OVERRIDES"))
 check("capcut_channel 种子表含 2.5", any(s[0] == MID for s in cc.CAPCUT_MODEL_SEEDS))
+
+print("\n7) 对外别名 sd-seedance-<版本>-<分辨率> 解析（客户端按分辨率选模型）")
+from app.routers.openai import resolve_model_alias  # noqa: E402
+for alias_name, want_ver, want_res in [
+        ("sd-seedance-2.0-480p", "2.0", "480p"),
+        ("sd-seedance-2.0-720p", "2.0", "720p"),
+        ("sd-seedance-2.5-480p", "2.5", "480p"),
+        ("sd-seedance-2.5-720p", "2.5", "720p")]:
+    got = resolve_model_alias(alias_name)
+    base = got[0] if got else ""
+    check(f"{alias_name} -> {want_ver}/{want_res}",
+          bool(got) and got[1] == want_res and base in ids,
+          f"实得 {got}（基准模型须在播种列表里）")
+check("别名基准名不含上游品牌",
+      all((resolve_model_alias(f"sd-seedance-{v}-{r}p") or ("", ""))[0].startswith("sd-")
+          for v in ("2.0", "2.5") for r in ("480", "720")))
+check("非别名模型名不被误判", resolve_model_alias("sd-seedance-2.0") is None)
 
 print("\n" + "=" * 60)
 if failures:

@@ -56,16 +56,34 @@ quota = 计费秒数 × model_ratio     →     model_ratio 就是「每秒 quot
 
 公式：`model_ratio = 每秒人民币 ÷ 汇率 × 500000`（汇率取 New API 后台实际配置值；若界面按 USD 显示，直接 `美元价 × 500000`）。
 
-**模型管理 → 找到该模型 → 倍率**里分别给 4 个模型填（可给不同分辨率/模型不同价）：`capcut-seedance-2.0` / `capcut-seedance-2.0-mini` / `capcut-seedance-1.0-fast` / `capcut-seedance_2.5`。
+**模型管理 → 找到该模型 → 倍率**里分别给 4 个模型填（可给不同分辨率/模型不同价）：`sd-seedance-2.0` / `sd-seedance-2.0-mini` / `sd-seedance-1.0-fast` / `sd-seedance-2.5`。
 
-## 4. 轮询必须免费：单独给一个 0 价模型名
+## 4. 轮询必须免费：单独给一个 0 价模型名（生产名 `sd-poll`）
 
 客户轮询（`@query <task_id>`）也是一次 API 调用，若用同一个模型名会**被再收一次费**。
 网关对轮询请求**不校验模型名**，所以：
 
-1. 渠道的模型列表里加上 `capcut-poll`（只是一个名字，网关无需实现它）；
-2. New API 里把 `capcut-poll` 配成 **倍率 0**（或固定价 0）；
-3. 客户端轮询时用 `model: "capcut-poll"`（内容仍是 `@query gen_xxx`）。
+1. 渠道的模型列表里加上 `sd-poll`（只是一个名字，网关无需实现它）；
+2. New API 里把 `sd-poll` 配成 **固定价 0**（`ModelPrice["sd-poll"] = 0`）；
+3. 客户端轮询时用 `model: "sd-poll"`（内容仍是 `@query gen_xxx`）。
+
+⚠️ **模型名不得出现上游品牌**（2026-09-21 运营要求）：所有对外名字一律 `sd-` 前缀，
+网关侧也一样（`capcut-seedance-*` → `sd-seedance-*`，见 `db._migrate_rebrand_model_ids`）。
+
+**实测数据（2026-09-21）**：
+
+| 轮询用的模型名 | New API 定价 | 单次轮询成本 |
+|---|---|---|
+| `sd-seedance-2.0-720p`（收费模型） | `model_ratio=300000` | **+4020 total_usage ≈ ¥40.2** ❌ |
+| `sd-poll` | `ModelPrice=0` | **+0** ✅ |
+
+- 根因：网关对 `@query` 上报 `usage={0,0,0}`，但 **New API 会用自己的 tokenizer 重算**
+  （实测 22 prompt + 45~67 completion tokens）；而按秒计费下 1 token = 1 秒，
+  于是这几十个 token 就变成了几十秒的钱。
+- 只配 `ModelPrice` 不够，**还要把 `sd-poll` 加进渠道的模型列表**，否则
+  `503 model_not_found: No available channel for model sd-poll`。
+- 改渠道用 `PUT /api/channel/` 时**请求体里不能带 `status` 字段**（New API 直接回
+  `Invalid parameters`），`relay/_newapi_admin.py` 已处理。 
 
 或者干脆让客户端**长轮询等待**（网关 `CHAT_WAIT_SECONDS=180`），5~15s 的短单一次调用就出片，连轮询都不用。
 
@@ -83,10 +101,10 @@ c<=5 ? c*4000 : c*3000
 ## 6. 上线步骤
 
 1. 用新包重建网关镜像，容器加环境变量：`USAGE_BILLING_SECONDS=1`（可选 `BILLING_SECONDS_MODE=total`、`CHAT_WAIT_SECONDS=180`）；
-2. New API：按第 3 节填 4 个模型的倍率，按第 4 节加 `capcut-poll`（倍率 0）；
+2. New API：按第 3 节填 4 个模型的倍率，按第 4 节加 `sd-poll`（**固定价 0** 并挂进渠道模型列表）；
 3. **实测校准**（必做，New API 的预扣/重算行为因版本而异）：
    - 打一单「5s + 1 个 5.06s 参考视频」→ 应计 11 秒 → 检查 New API 日志里该次请求的额度消耗 = `11 × model_ratio`；
-   - 再发一次 `@query` 轮询 → 额度消耗应为 0（若不为 0，说明 `capcut-poll` 定价或本地 token 计数在起作用，改用 0 倍率/0 固定价重试）。
+   - 再发一次 `@query` 轮询 → 额度消耗应为 0（若不为 0，说明 `sd-poll` 定价或本地 token 计数在起作用，改用 0 固定价重试）。
 
 ## 7. 已知注意点
 

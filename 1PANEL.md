@@ -52,7 +52,7 @@ PUBLIC_BASE_URL=http://服务器IP:8000
 curl http://服务器IP:8000/health        # 应返回 {"status":"ok",...}
 ```
 
-浏览器打开 `http://服务器IP:8000/admin` → 用 `admin` + 你设的密码登录 → 账号管理 → 批量导入 Cookie（渠道选 **CapCut**）→ 模型页确认 `capcut-seedance-2.0` / `capcut-seedance_2.5` → 后台「API Key」里签一把 Key 给 New API / 客户端用。
+浏览器打开 `http://服务器IP:8000/admin` → 用 `admin` + 你设的密码登录 → 账号管理 → 批量导入 Cookie（渠道选 **CapCut**）→ 模型页确认 `sd-seedance-2.0` / `sd-seedance-2.5` → 后台「API Key」里签一把 Key 给 New API / 客户端用。
 
 ---
 

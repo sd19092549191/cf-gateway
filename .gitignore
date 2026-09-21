@@ -16,6 +16,14 @@ _r2_test_result.json
 _e2e_*.py
 _smoke_v1.sh
 
+# 一次性排障脚本 / 运行产物（内含明文测试 key 或任务快照，严禁入库）
+_newapi_session.json
+_submit_*.py
+_upload_iphone_refs.py
+_iphone_*.json
+_gen_*.json
+_submit_out*.log
+
 # 系统垃圾
 .DS_Store
 __pycache__/

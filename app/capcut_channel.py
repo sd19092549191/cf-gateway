@@ -609,19 +609,24 @@ async def poll_capcut(task_id: str, token: str, account) -> tuple:
 
 # ---------------- 模型目录（CapCut 无远端目录，用内置种子 upsert） ----------------
 
+# ⚠️ 对外 model_id 一律用 `sd-` 前缀（**禁止出现上游品牌名**，2026-09-21 运营要求）：
+# 客户端看到的模型名、响应体里的 model 字段、后台列表都不得暴露上游。
+# 内部一切逻辑仍按 provider="capcut" 分流（accounts/models 表），只在对外字符串上脱敏。
+MODEL_ID_PREFIX = "sd-"
+
 CAPCUT_MODEL_SEEDS = [
     # (对外 model_id, 上游 CapCut 模型, 预估积分, 默认模板)
-    ("capcut-seedance-2.0-mini", "seedance_2.0_mini", 28,
+    ("sd-seedance-2.0-mini", "seedance_2.0_mini", 28,
      {"resolution": "480p", "ratio": "9:16", "duration": 5, "generate_audio": True}),
-    ("capcut-seedance-2.0", "seedance_2.0", 56,
+    ("sd-seedance-2.0", "seedance_2.0", 56,
      {"resolution": "720p", "ratio": "9:16", "duration": 5, "generate_audio": True}),
-    ("capcut-seedance-1.0-fast", "seedance_1.0_fast", 20,
+    ("sd-seedance-1.0-fast", "seedance_1.0_fast", 20,
      {"resolution": "480p", "ratio": "16:9", "duration": 5, "generate_audio": True}),
-    # Seedance 2.5（r2v 多参考素材通道）。⚠️ 对外 id 用**下划线**（与 2.0 系的连字符不同），
-    # 与官方目录同步的 `_KEY_ALIAS` 结果保持一致，避免同一模型既播种又同步出两条。
+    # Seedance 2.5（r2v 多参考素材通道）。⚠️ 历史上对外 id 混用过下划线与 `capcut-` 前缀，
+    # 现统一为 `sd-seedance-2.5`（见 db._migrate_rebrand_model_ids 的存量改名）。
     # estimated_cost 取**最低可跑价**（5s @ 480p = 5×17 = 85 分）当闸门——2.5 计费随时长/分辨率
     # 浮动（17/37/72 分每秒），真实值用 `relay/_capcut_price.py` 现算；设 85 能避免选到连最短片都付不起的号。
-    ("capcut-seedance_2.5", "seedance_2.5", 85,
+    ("sd-seedance-2.5", "seedance_2.5", 85,
      {"duration": 5, "generate_audio": True}),
 ]
 
@@ -641,14 +646,14 @@ def sync_capcut_models(db) -> dict:
             entry.mcp_tool = upstream
             entry.estimated_cost = cost
             entry.provider = PROVIDER
-            entry.description = f"CapCut 直连通道（{upstream}，common_task 协议）"
+            entry.description = f"SD 直连通道（{upstream}，common_task 协议）"
             updated += 1
         else:
             db.add(ModelEntry(
-                model_id=mid, display_name=f"CapCut {upstream}", provider=PROVIDER,
+                model_id=mid, display_name=f"SD {upstream}", provider=PROVIDER,
                 mcp_tool=upstream, mtype="video", enabled=True, estimated_cost=cost,
                 timeout_seconds=900, auto_registered=False,
-                description=f"CapCut 直连通道（{upstream}，common_task 协议）",
+                description=f"SD 直连通道（{upstream}，common_task 协议）",
                 param_template_text=JSONText.dump(tpl)))
             imported += 1
     db.commit()
@@ -660,9 +665,10 @@ def sync_capcut_models(db) -> dict:
 
 # 官方 model_key -> 已验证可用的种子 model_id（沿用实测过的上游名，避免重复建目）
 _KEY_ALIAS = {
-    "seedance2_mini": "capcut-seedance-2.0-mini",
-    "seedance2": "capcut-seedance-2.0",
-    "seedance_1.0_fast": "capcut-seedance-1.0-fast",
+    "seedance2_mini": "sd-seedance-2.0-mini",
+    "seedance2": "sd-seedance-2.0",
+    "seedance_1.0_fast": "sd-seedance-1.0-fast",
+    "seedance_2.5": "sd-seedance-2.5",
 }
 _SEED_IDS = {s[0] for s in CAPCUT_MODEL_SEEDS}
 _META_KEYS = ("name", "model_key", "summary", "icon", "ratios", "resolutions",
@@ -712,7 +718,7 @@ def upsert_capcut_catalog(db, catalog: dict) -> dict:
             key = m.get("model_key") or m.get("name")
             if not key:
                 continue
-            mid = _KEY_ALIAS.get(key) or f"capcut-{key}"
+            mid = _KEY_ALIAS.get(key) or f"{MODEL_ID_PREFIX}{key}"
             seen.add(mid)
             meta = {k: m.get(k) for k in _META_KEYS if m.get(k) not in (None, [], {})}
             display = m.get("name") or key

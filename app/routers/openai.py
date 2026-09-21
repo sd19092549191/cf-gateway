@@ -140,8 +140,11 @@ async def upload_files(request: Request, authorization: str = Header(default="")
 
 # sd-seedance-* 对外别名：New API 渠道按「模型名=分辨率」暴露（如 sd-seedance-2.0-720p），
 # 网关解析成基础模型 + 强制分辨率（覆盖请求里的 size/resolution，别名即产品承诺）。
+# ⚠️ 对外模型名一律 `sd-` 前缀，禁止出现上游品牌名（2026-09-21 运营要求）。
 _SD_ALIAS_RE = re.compile(r"^sd-seedance[-_](2\.0|2\.5)[-_](480|720)p$", re.IGNORECASE)
-_SD_ALIAS_BASE = {"2.0": "capcut-seedance-2.0", "2.5": "capcut-seedance_2.5"}
+_SD_ALIAS_BASE = {"2.0": "sd-seedance-2.0", "2.5": "sd-seedance-2.5"}
+# 历史遗留前缀：改名前的库里存的是 `capcut-*`，判断逻辑要兼容旧数据
+_SD_MODEL_PREFIXES = ("sd-", "capcut-")
 
 
 def resolve_model_alias(model_id: str) -> Optional[tuple]:
@@ -268,7 +271,7 @@ def _gen_response(gen: Generation, detailed: bool = True):
             "url": gen.result_url or None,
             "error": gen.error or None,
             "cf_status": gen.cf_status or None,
-            "link_mode": (gen.link_mode or None) if (gen.link_mode or gen.model_id.startswith("capcut-")) else None,
+            "link_mode": (gen.link_mode or None) if (gen.link_mode or gen.model_id.startswith(_SD_MODEL_PREFIXES)) else None,
             "created_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(gen.created_at)),
         })
         if gen.finished_at:
@@ -401,14 +404,14 @@ def list_models(authorization: str = Header(default=""), db: Session = Depends(d
     for m in rows:
         if allowed and m.model_id not in allowed:
             continue
-        item = {"id": m.model_id, "object": "model", "owned_by": m.provider,
+        item = {"id": m.model_id, "object": "model", "owned_by": "sd",
                 "created": int(m.created_at)}
         # CapCut 渠道额外回带该模型实际生效的生成上限（分辨率/时长/参考素材数量）
         if (m.provider or "") == "capcut":
             try:
                 from ..service import gen_limits_of, ref_limits_of
                 gl, rl = gen_limits_of(m), ref_limits_of(m)
-                item["capcut_limits"] = {
+                item["sd_limits"] = {
                     "resolutions": [f"{r}p" for r in gl["resolutions"]],
                     "durations": gl["durations"] or [gl["min_duration"], gl["max_duration"]],
                     "min_duration": gl["min_duration"],
@@ -429,7 +432,7 @@ def list_models(authorization: str = Header(default=""), db: Session = Depends(d
                 alias_id = f"sd-seedance-{ver}-{res}"
                 if allowed and alias_id not in allowed and m.model_id not in allowed:
                     continue
-                data.append({"id": alias_id, "object": "model", "owned_by": m.provider,
+                data.append({"id": alias_id, "object": "model", "owned_by": "sd",
                              "created": int(m.created_at), "alias_of": m.model_id})
     return {"object": "list", "data": data}
 
@@ -573,7 +576,7 @@ def _ext_status(gen: Generation) -> str:
     return "processing" if gen.status in ("queued", "polling") else gen.status
 
 
-def _poll_chat_payload(gen: Generation) -> dict:
+def _poll_chat_payload(gen: Generation, model_name: str = "") -> dict:
     status = _ext_status(gen)
     if gen.status == Generation.STATUS_COMPLETED:
         from ..mcp_client import extract_text
@@ -593,7 +596,9 @@ def _poll_chat_payload(gen: Generation) -> dict:
         "id": "chatcmpl-" + gen.gen_id,
         "object": "chat.completion",
         "created": int(gen.created_at),
-        "model": gen.model_id,
+        # 回显调用方请求的模型名（客户端可能用 sd-poll 之类的中性名轮询），
+        # 避免把内部/上游模型名透出去；无请求名时退回任务记录的模型名。
+        "model": model_name or gen.model_id,
         "choices": [{
             "index": 0,
             "message": {"role": "assistant", "content": text},
@@ -612,8 +617,10 @@ def _poll_chat_payload(gen: Generation) -> dict:
 #   USAGE_BILLING_SECONDS=1        → 生成响应的 usage.completion_tokens = 计费秒数
 #   BILLING_SECONDS_MODE=total     → 计费秒 = ceil(输出秒 + Σ参考视频秒)（默认，与上游口径一致）
 #                         output   → 只算输出秒
-# 轮询（@query）响应固定 usage=0。建议 New API 侧给轮询单独用一个 0 价模型名（如 capcut-poll），
+# 轮询（@query）响应固定 usage=0。New API 侧必须给轮询单独用一个 **0 价** 模型名
+# （生产用 `sd-poll`，已挂到「官转sd」渠道；⚠️ 名字不得出现上游品牌），
 # 网关对轮询请求不校验模型名，因此可自由取用。
+# 反例：拿收费模型名轮询会被 New API 按 token 重算（≈¥40/次），务必用 0 价名。
 _ref_sec_cache: dict[str, float] = {}
 
 
@@ -729,7 +736,7 @@ async def chat_completions(request: Request, authorization: str = Header(default
         g, qerr = await _find_generation(db, key, poll_id)
         if qerr:
             return qerr
-        payload = _poll_chat_payload(g)
+        payload = _poll_chat_payload(g, str(body.get("model") or "").strip())
         if body.get("stream"):
             async def _sse():
                 chunk = dict(payload)
