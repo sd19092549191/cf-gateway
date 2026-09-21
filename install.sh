@@ -13,29 +13,35 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO="sd19092549191/cf-gateway"
+BRANCH="main"
 RELEASE_TAG="v1.0.0"
 
 # ---------- 0. 自举：不在源码目录时自动下载 ----------
 if [[ ! -f "$DIR/docker-compose.yml" ]]; then
-  printf '\033[1;36m[自举]\033[0m 下载源码包 %s ...\n' "$RELEASE_TAG"
+  printf '\033[1;36m[自举]\033[0m 下载源码（%s 分支最新）...\n' "$BRANCH"
   command -v curl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq curl unzip; }
+  command -v tar   >/dev/null 2>&1 || apt-get install -y -qq tar
   command -v unzip >/dev/null 2>&1 || apt-get install -y -qq unzip
   rm -rf "$DIR/cf-gateway" && mkdir -p "$DIR/cf-gateway"
-  # 公开仓库：直接拉 Release 资产
-  if curl -fsSL -o /tmp/cf-gateway.zip \
+  # ① 公开仓库：优先拉 main 分支源码包（永远最新，不受 Release 资产是否更新影响）
+  if curl -fsSL -o /tmp/cf-gateway.tar.gz \
+       "https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}"; then
+    tar -xzf /tmp/cf-gateway.tar.gz -C "$DIR/cf-gateway" --strip-components=1
+  # ② 兜底：Release 资产
+  elif curl -fsSL -o /tmp/cf-gateway.zip \
        "https://github.com/${REPO}/releases/download/${RELEASE_TAG}/cf-gateway-1.0.0.zip"; then
     unzip -q /tmp/cf-gateway.zip -d "$DIR/cf-gateway"
     DIR="$(echo "$DIR"/cf-gateway/cf-gateway-*/)"
   else
-    # 兜底：转私或资产缺失时用 zipball API（需 GH_TOKEN）
+    # ③ 兜底：转私或以上都失败时用 zipball API（需 GH_TOKEN）
     GH_TOKEN="${GH_TOKEN:-}"
     [[ -n "$GH_TOKEN" ]] || {
-      printf '\033[1;31m[x]\033[0m Release 下载失败且未提供 GH_TOKEN。\n' >&2
+      printf '\033[1;31m[x]\033[0m 源码下载失败且未提供 GH_TOKEN。\n' >&2
       echo '    用法: GH_TOKEN=<PAT> bash install.sh' >&2
       exit 1
     }
     curl -fsSL -H "Authorization: token ${GH_TOKEN}" \
-         -o /tmp/cf-gateway.zip "https://api.github.com/repos/${REPO}/zipball/${RELEASE_TAG}"
+         -o /tmp/cf-gateway.zip "https://api.github.com/repos/${REPO}/zipball/${BRANCH}"
     unzip -q /tmp/cf-gateway.zip -d "$DIR/cf-gateway"
     DIR="$(echo "$DIR"/cf-gateway/sd19092549191-cf-gateway-*/)"
     [[ -f "$DIR/docker-compose.yml" ]] || DIR="$(echo "$DIR"/cf-gateway-*/)"
